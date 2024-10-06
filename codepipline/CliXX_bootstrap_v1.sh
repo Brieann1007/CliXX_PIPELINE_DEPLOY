@@ -11,7 +11,7 @@ sudo yum update -y
 
 #Mounting 
 sudo yum install -y nfs-utils
-FILE_SYSTEM_ID=fs-04f4eafe6b95e9fa3
+FILE_SYSTEM_ID=fs-0de2a8e2991595d04
 AVAILABILITY_ZONE=$(curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone )
 REGION=${AVAILABILITY_ZONE:0:-1}
 MOUNT_POINT=/var/www/html
@@ -61,7 +61,7 @@ cp -r CliXX_Retail_Repository/* /var/www/html
  
 ## Allow wordpress to use Permalinks
 sudo sed -i '151s/None/All/' /etc/httpd/conf/httpd.conf
-sudo sed -i 's/wordpress-db.cc5iigzknvxd.us-east-1.rds.amazonaws.com/finalclixxdb2.cn2yqqwoac4e.us-east-1.rds.amazonaws.com/' /var/www/html/wp-config.php
+sudo sed -i 's/wordpress-db.cc5iigzknvxd.us-east-1.rds.amazonaws.com/wordpressdbclixx.czuum48cat54.us-east-1.rds.amazonaws.com/' /var/www/html/wp-config.php
 if [ $? == 0 ]
 then
     echo "sed was done"
@@ -69,7 +69,7 @@ else
     echo "sed was not done"
 fi
 
-output_variable=$(mysql -u wordpressuser -p -h finalclixxdb2.cn2yqqwoac4e.us-east-1.rds.amazonaws.com -D wordpressdb -pW3lcome123 -sse "select option_value from wp_options where option_value like 'FinalCliXX-LB%';")
+output_variable=$(mysql -u wordpressuser -p -h wordpressdbclixx.czuum48cat54.us-east-1.rds.amazonaws.com -D wordpressdb -pW3lcome123 -sse "select option_value from wp_options where option_value like 'FinalCliXX-LB%';")
 
 if [ output_variable == ${DNS} ]
 then
