@@ -1,7 +1,7 @@
 #!/bin/bash -xe
  
 #Variable 
-DNS='test.testclixx-azeez.com'
+DNS='https://dev.clixx-brie.com'
 
 ##Install the needed packages and enable the services(MariaDb, Apache)
 sudo yum update -y
@@ -77,7 +77,7 @@ then
 else
     echo "DNS Address is not in the table"
     #Logging DB
-    mysql -u wordpressuser -p -h finalclixxdb2.cn2yqqwoac4e.us-east-1.rds.amazonaws.com -D wordpressdb -pW3lcome123<<EOF
+    mysql -u wordpressuser -p -h wordpressdbclixx.czuum48cat54.us-east-1.rds.amazonaws.com -D wordpressdb -pW3lcome123<<EOF
     UPDATE wp_options SET option_value ='${DNS}' WHERE option_value LIKE 'CliXX-APP-%';
 EOF
 fi
