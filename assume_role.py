@@ -64,7 +64,7 @@ efs=boto3.client('efs',aws_access_key_id=credentials['AccessKeyId'],aws_secret_a
 response=efs.describe_file_systems()
 print(response)
 response=efs.create_file_system(
-    CreationToken='',
+    CreationToken='tokenstring',
     PerformanceMode='generalPurpose',
     Encrypted=True,
     KmsKeyId='15a7670d-cdec-4cb6-b89a-8e6a0d492c13',
