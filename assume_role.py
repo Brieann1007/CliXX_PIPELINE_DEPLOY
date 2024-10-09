@@ -16,6 +16,7 @@ print(credentials)
 #     MaxBuckets=123)
 
 # print(response)
+ec2 = boto3.client('ec2')
 response = ec2.describe_vpcs()
 try:
     ec2=boto3.client('ec2',aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'])
