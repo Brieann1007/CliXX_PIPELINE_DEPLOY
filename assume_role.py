@@ -20,7 +20,7 @@ print(credentials)
 ec2 = boto3.client('ec2')
 response = ec2.describe_vpcs()
 vpc_id = response.get('Vpcs', [{}])[0].get('VpcId', '')
-print(response)
+print(vpc_id)
 try:
     ec2=boto3.client('ec2',aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'])
     response = ec2.create_security_group(
