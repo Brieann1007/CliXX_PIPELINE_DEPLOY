@@ -16,12 +16,32 @@ print(credentials)
 #     MaxBuckets=123)
 
 # print(response)
+response = ec2.describe_vpcs()
+try:
+    ec2=boto3.client('ec2',aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'])
+    response = ec2.create_security_group(
+        Description='stack_web_dmz_cli',
+        GroupName='stack_web_dmz_cli',
+        VpcId='vpc-0f6c3540fa540a07b'
+        )
+    vpc_id = response['VpcId']
+    print(response)
 
-ec2=boto3.client('ec2',aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'])
-response = ec2.create_security_group(
-    Description='My security group',
-    GroupName='my-security-group',
-    VpcId='vpc-0f6c3540fa540a07b'
-    )
+    security_group_id = response['GroupId']
+    print('Security Group Created %s in vpc %s.' % (security_group_id, vpc_id))
 
-print(response)
+    data = ec2.authorize_security_group_ingress(
+        GroupId=security_group_id,
+        IpPermissions=[
+            {'IpProtocol': 'tcp',
+             'FromPort': 80,
+             'ToPort': 80,
+             'IpRanges': [{'CidrIp': '0.0.0.0/0'}]},
+            {'IpProtocol': 'tcp',
+             'FromPort': 22,
+             'ToPort': 22,
+             'IpRanges': [{'CidrIp': '0.0.0.0/0'}]}
+        ])
+    print('Ingress Successfully Set %s' % data)
+except ClientError as e:
+    print(e)
