@@ -55,11 +55,36 @@ try:
             {'IpProtocol': 'tcp',
              'FromPort': 3306,
              'ToPort': 3306,
-             'IpRanges': [{'CidrIp': '0.0.0.0/0'}]},
+             'IpRanges': [{'CidrIp': '0.0.0.0/0'}]}
         ])
     print('Ingress Successfully Set %s' % data)
 except ClientError as e:
     print(e)
 efs=boto3.client('efs',aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'])
 response=efs.describe_access_points()
+print(response)
+response=efs.create_file_system(
+    CreationToken='',
+    PerformanceMode='generalPurpose',
+    Encrypted=True,
+    KmsKeyId='15a7670d-cdec-4cb6-b89a-8e6a0d492c13',
+    ThroughputMode='bursting',
+    ProvisionedThroughputInMibps=123.0,
+    AvailabilityZoneName='Regional',
+    Backup=True,
+    Tags=[
+        {
+            'Key': 'Name',
+            'Value': 'stack-CliXX-efs-cli'
+        },
+        {
+            'Key': 'GroupName',
+            'Value': 'stackcloud12'
+        },
+        {
+            'Key': 'OwnerEmail',
+            'Value': 'brieann1007@outlook.com'
+        }
+    ]
+)
 print(response)
