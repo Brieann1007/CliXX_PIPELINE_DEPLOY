@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 import boto3,botocore
+from botocore.exceptions import ClientError
 
 sts_client=boto3.client('sts')
 
