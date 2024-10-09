@@ -94,27 +94,30 @@ print(response)
 response = elbv2.create_target_group(
     Name='stack-CliXX-tg',
     Protocol='HTTP',
-    ProtocolVersion='string',
-    Port=123,
-    VpcId='string',
-    HealthCheckProtocol='HTTP'|'HTTPS'|'TCP'|'TLS'|'UDP'|'TCP_UDP'|'GENEVE',
-    HealthCheckPort='string',
-    HealthCheckEnabled=True|False,
-    HealthCheckPath='string',
-    HealthCheckIntervalSeconds=123,
-    HealthCheckTimeoutSeconds=123,
-    HealthyThresholdCount=123,
-    UnhealthyThresholdCount=123,
+    ProtocolVersion='HTTP1',
+    Port=80,
+    VpcId='vpc-0f6c3540fa540a07b',
+    HealthCheckProtocol='HTTP',
+    HealthCheckPort='traffic-port',
+    HealthCheckEnabled=True,
+    HealthCheckPath='/',
+    HealthCheckIntervalSeconds=300,
+    HealthCheckTimeoutSeconds=120,
+    HealthyThresholdCount=5,
+    UnhealthyThresholdCount=2,
     Matcher={
-        'HttpCode': 'string',
-        'GrpcCode': 'string'
+        'HttpCode': '200'
     },
-    TargetType='instance'|'ip'|'lambda'|'alb',
+    TargetType='instance',
     Tags=[
         {
-            'Key': 'string',
-            'Value': 'string'
+            'Key': 'GroupName',
+            'Value': 'stackcloud12'
         },
+        {
+            'Key': 'OwnerEmail',
+            'Value': 'brieann1007@outlook.com'
+        }
     ],
     IpAddressType='ipv4'|'ipv6'
 )
