@@ -60,3 +60,6 @@ try:
     print('Ingress Successfully Set %s' % data)
 except ClientError as e:
     print(e)
+efs=boto3.client('efs',aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'])
+response =efs.Client.describe_access_points()
+print(response)
