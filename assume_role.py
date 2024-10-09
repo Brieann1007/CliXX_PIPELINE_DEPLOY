@@ -61,5 +61,5 @@ try:
 except ClientError as e:
     print(e)
 efs=boto3.client('efs',aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'])
-response =efs.Client.describe_access_points()
+response=efs.describe_access_points()
 print(response)
