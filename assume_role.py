@@ -70,7 +70,7 @@ response=efs.create_file_system(
     KmsKeyId='15a7670d-cdec-4cb6-b89a-8e6a0d492c13',
     ThroughputMode='bursting',
     ProvisionedThroughputInMibps=123.0,
-    AvailabilityZoneName='Regional',
+    AvailabilityZoneName='us-east-1a',
     Backup=True,
     Tags=[
         {
