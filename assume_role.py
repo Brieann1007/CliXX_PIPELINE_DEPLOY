@@ -19,6 +19,8 @@ print(credentials)
 # print(response)
 ec2 = boto3.client('ec2')
 response = ec2.describe_vpcs()
+vpc_id = response.get('Vpcs', [{}])[0].get('VpcId', '')
+print(response)
 try:
     ec2=boto3.client('ec2',aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'])
     response = ec2.create_security_group(
@@ -26,9 +28,9 @@ try:
         GroupName='stack_web_dmz_cli',
         VpcId='vpc-0f6c3540fa540a07b'
         )
-    vpc_id = response['VpcId']
+    
     print(response)
-
+    vpc_id = response['VpcId']
     security_group_id = response['GroupId']
     print('Security Group Created %s in vpc %s.' % (security_group_id, vpc_id))
 
