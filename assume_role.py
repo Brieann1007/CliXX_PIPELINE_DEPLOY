@@ -20,7 +20,7 @@ print(credentials)
 ec2 = boto3.client('ec2',aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'])
 response = ec2.describe_vpcs()
 vpc_id = response.get('Vpcs', [{}])[0].get('VpcId', '')
-print(vpc_id)
+#print(vpc_id)
 try:
     ec2=boto3.client('ec2',aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'])
     response = ec2.create_security_group(
@@ -62,7 +62,7 @@ except ClientError as e:
     print(e)
 efs=boto3.client('efs',aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'])
 response=efs.describe_file_systems()
-print(response)
+#print(response)
 response=efs.create_file_system(
     CreationToken='tokenstring',
     PerformanceMode='generalPurpose',
@@ -86,4 +86,35 @@ response=efs.create_file_system(
             'Value': 'brieann1007@outlook.com'
         }
     ]
+)
+
+elbv2=boto3.client('elbv2',aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'])
+response=elbv2.describe_target_groups()
+print(response)
+response = elbv2.create_target_group(
+    Name='stack-CliXX-tg',
+    Protocol='HTTP',
+    ProtocolVersion='string',
+    Port=123,
+    VpcId='string',
+    HealthCheckProtocol='HTTP'|'HTTPS'|'TCP'|'TLS'|'UDP'|'TCP_UDP'|'GENEVE',
+    HealthCheckPort='string',
+    HealthCheckEnabled=True|False,
+    HealthCheckPath='string',
+    HealthCheckIntervalSeconds=123,
+    HealthCheckTimeoutSeconds=123,
+    HealthyThresholdCount=123,
+    UnhealthyThresholdCount=123,
+    Matcher={
+        'HttpCode': 'string',
+        'GrpcCode': 'string'
+    },
+    TargetType='instance'|'ip'|'lambda'|'alb',
+    Tags=[
+        {
+            'Key': 'string',
+            'Value': 'string'
+        },
+    ],
+    IpAddressType='ipv4'|'ipv6'
 )
