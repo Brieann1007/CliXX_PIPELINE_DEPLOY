@@ -87,12 +87,12 @@ response=efs.create_file_system(
         }
     ]
 )
-
+print(response)
 elbv2=boto3.client('elbv2',aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'])
 #response=elbv2.describe_target_groups()
 #print(response)
-response = elbv2.create_target_group(
-    Name='stack-CliXX-tg',
+response=elbv2.create_target_group(
+    Name='stack-CliXX-tg-cli',
     Protocol='HTTP',
     ProtocolVersion='HTTP1',
     Port=80,
@@ -121,6 +121,39 @@ response = elbv2.create_target_group(
     ],
     IpAddressType='ipv4'
 )
+print(response)
 
 response=elbv2.describe_load_balancers()
-print(response)
+#print(response)
+
+response=elbv2.create_load_balancer(
+    LoadBalancerName='stack-CliXX-lb-cli',
+    Listeners=[
+        {
+            'Protocol': 'HTTPS',
+            'LoadBalancerPort': 443,
+            'InstanceProtocol': 'HTTPS',
+            'InstancePort': 443,
+            'SSLCertificateId': 'string'
+            ''
+        },
+    ],
+    AvailabilityZones=[
+        'string',
+    ],
+    Subnets=[
+        'string',
+    ],
+    SecurityGroups=[
+        security_group_id,
+    ],
+    Scheme='internet-facing',
+    Tags=[
+        {
+            'Key': 'string',
+            'Value': 'string'
+        },
+    ]
+    Type='application',
+    IpAddressType='ipv4',
+)
