@@ -150,9 +150,9 @@ response=elbv2.create_load_balancer(
     Scheme='internet-facing',
     Tags=[
         {
-            'Key': 'string',
-            'Value': 'string'
-        },
+            'Key': 'GroupName',
+            'Value': 'stackcloud12'
+        }
     ]
     Type='application',
     IpAddressType='ipv4',
