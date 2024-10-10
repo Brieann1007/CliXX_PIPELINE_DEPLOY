@@ -89,8 +89,8 @@ response=efs.create_file_system(
 )
 
 elbv2=boto3.client('elbv2',aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'])
-response=elbv2.describe_target_groups()
-print(response)
+#response=elbv2.describe_target_groups()
+#print(response)
 response = elbv2.create_target_group(
     Name='stack-CliXX-tg',
     Protocol='HTTP',
@@ -121,3 +121,6 @@ response = elbv2.create_target_group(
     ],
     IpAddressType='ipv4'
 )
+
+response=elbv2.describe_load_balancers()
+print(response)
