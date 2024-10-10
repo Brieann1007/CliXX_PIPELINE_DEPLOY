@@ -119,5 +119,5 @@ response = elbv2.create_target_group(
             'Value': 'brieann1007@outlook.com'
         }
     ],
-    IpAddressType='ipv4'|'ipv6'
+    IpAddressType='ipv4'
 )
