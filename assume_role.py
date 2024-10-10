@@ -152,8 +152,8 @@ response=elbv2.create_load_balancer(
         {
             'Key': 'GroupName',
             'Value': 'stackcloud12'
-        }
-    ]
+        },
+    ],
     Type='application',
     IpAddressType='ipv4',
 )
