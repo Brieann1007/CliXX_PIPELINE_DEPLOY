@@ -136,7 +136,6 @@ response=elbv2.create_load_balancer(
             'InstanceProtocol': 'HTTPS',
             'InstancePort': 443,
             'SSLCertificateId': 'string'
-            'D'
         },
     ],
     AvailabilityZones=[
