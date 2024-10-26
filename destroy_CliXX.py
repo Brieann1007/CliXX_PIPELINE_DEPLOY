@@ -20,3 +20,12 @@ response = ec2.delete_security_group(
     GroupName='stack_web_dmz_cli'
     )
 print(response)
+
+efs=boto3.client('efs',aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'])
+response=efs.describe_file_systems()
+print(response)
+
+#response=efs.delete_file_system(
+#    FileSystemId='string'
+#)
+#print(response)
