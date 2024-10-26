@@ -32,7 +32,7 @@ try:
     print(response)
     security_group_id = response['GroupId']
     print('Security Group Created %s in vpc %s.' % (security_group_id, vpc_id))
-
+    
     data = ec2.authorize_security_group_ingress(
         GroupId=security_group_id,
         IpPermissions=[
@@ -121,9 +121,10 @@ response=elbv2.create_target_group(
     ],
     IpAddressType='ipv4'
 )
-print(response)
+#print(response)
+tg_arn=response['TargetGroupArn']
 
-response=elbv2.describe_load_balancers()
+#response=elbv2.describe_load_balancers()
 #print(response)
 
 response=elbv2.create_load_balancer(
@@ -135,7 +136,7 @@ response=elbv2.create_load_balancer(
             'InstanceProtocol': 'HTTPS',
             'InstancePort': 443,
             'SSLCertificateId': 'string'
-            ''
+            'D'
         },
     ],
     AvailabilityZones=[
