@@ -14,7 +14,12 @@ print(credentials)
 
 
 def create_security_group(**args):
-##creating security group##
+    sts_client=boto3.client('sts')
+    #Calling the assume_role function
+    assumed_role_object=sts_client.assume_role(RoleArn='arn:aws:iam::054037131148:role/Engineer', RoleSessionName='mysession')
+    credentials=assumed_role_object['Credentials']
+    print(credentials)
+    ##creating security group##
     try:
         ec2=boto3.client('ec2',aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'])
         response = ec2.create_security_group(
