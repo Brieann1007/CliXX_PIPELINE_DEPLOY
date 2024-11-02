@@ -22,9 +22,6 @@ def delete_vpc(vpc_id):
         # Finally, delete the VPC
         ec2.delete_vpc(VpcId=vpc_id)
         print('Deleted VPC with ID: %s.' % (vpc_id))
-        
-
-
         # Deleting the parameter from SSM
         ssm.delete_parameter(Name='/clixx/vpc_id')
         print('Deleted VPC ID from SSM Parameter Store.')
