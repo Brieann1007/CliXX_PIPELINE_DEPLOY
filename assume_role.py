@@ -6,7 +6,7 @@ import time
 import base64
 import os
 
-vpc_txt_loc='/codebuild/output/VPC/vpc.txt'
+vpc_txt_loc='/codebuild/output/src2682990481/src/github.com/Brieann1007/CliXX_PIPELINE_DEPLOY/vpc.txt'
 
 def create_vpc(**args):
     sts_client=boto3.client('sts')
@@ -603,7 +603,7 @@ if __name__=="__main__":
     assumed_role_object=sts_client.assume_role(RoleArn='arn:aws:iam::054037131148:role/Engineer', RoleSessionName='mysession')
     credentials=assumed_role_object['Credentials']
     print(credentials)
-    vpc_txt_loc='/codebuild/output/VPC/vpc.txt'
+    vpc_txt_loc='/codebuild/output/src2682990481/src/github.com/Brieann1007/CliXX_PIPELINE_DEPLOY/vpc.txt'
     vpc_id = create_vpc(service="ec2")
     public_subnets, private_subnets = create_subnets(vpc_id)
     ig_id = create_internet_gateway(vpc_id)
