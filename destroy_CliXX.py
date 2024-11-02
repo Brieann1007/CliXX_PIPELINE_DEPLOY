@@ -167,7 +167,7 @@ if __name__=="__main__":
     assumed_role_object=sts_client.assume_role(RoleArn='arn:aws:iam::054037131148:role/Engineer', RoleSessionName='mysession')
     credentials=assumed_role_object['Credentials']
     print(credentials)
-    vpc_txt_loc='/home/oracle/scripts/practicedir_gat_apr24/bin/AWS/VPC/vpc.txt'
+    vpc_txt_loc='/codebuild/output/VPC/vpc.txt'
     if not os.path.exists(vpc_txt_loc):
         print("Error: The VPC ID file does not exist. Please run assume_role.py first.")
         exit(1)

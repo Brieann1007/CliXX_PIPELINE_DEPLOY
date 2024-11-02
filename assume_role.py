@@ -311,10 +311,6 @@ def create_file_system():
     file_system_id = response['FileSystemId']
     print("EFS File System created with ID:", file_system_id)
 
-    # Write the File System ID to a text file
-    with open('/home/oracle/scripts/practicedir_gat_apr24/bin/AWS/VPC/efs_id.txt', 'w') as f:
-        f.write(file_system_id)
-
     return file_system_id
     
 def create_target_group(vpc_id):
@@ -607,7 +603,7 @@ if __name__=="__main__":
     assumed_role_object=sts_client.assume_role(RoleArn='arn:aws:iam::054037131148:role/Engineer', RoleSessionName='mysession')
     credentials=assumed_role_object['Credentials']
     print(credentials)
-    vpc_txt_loc='/home/oracle/scripts/practicedir_gat_apr24/bin/AWS/VPC/vpc.txt'
+    vpc_txt_loc='/codebuild/output/VPC/vpc.txt'
     vpc_id = create_vpc(service="ec2")
     public_subnets, private_subnets = create_subnets(vpc_id)
     ig_id = create_internet_gateway(vpc_id)
@@ -632,6 +628,7 @@ if __name__=="__main__":
         f.write("%s\n" % (eip_id))
         f.write("%s\n" % (public_rt_id))
         f.write("%s\n" % (private_rt_id))
+        f.write("%s\n" % (file_system_id))
         f.write("%s\n" % (file_system_id))
         f.write("%s\n" % (tg_arn))
         f.write("%s\n" % (load_balancer_arn))
