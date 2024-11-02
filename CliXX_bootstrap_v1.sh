@@ -61,7 +61,7 @@ cp -r CliXX_Retail_Repository/* /var/www/html
  
 ## Allow wordpress to use Permalinks
 sudo sed -i '151s/None/All/' /etc/httpd/conf/httpd.conf
-sudo sed -i 's/wordpress-db.cc5iigzknvxd.us-east-1.rds.amazonaws.com/wordpressdbclixx.czuum48cat54.us-east-1.rds.amazonaws.com/' /var/www/html/wp-config.php
+sudo sed -i 's/wordpress-db.cc5iigzknvxd.us-east-1.rds.amazonaws.com/stack-clixx-db.czuum48cat54.us-east-1.rds.amazonaws.com/' /var/www/html/wp-config.php
 if [ $? == 0 ]
 then
     echo "sed was done"
@@ -69,7 +69,7 @@ else
     echo "sed was not done"
 fi
 
-output_variable=$(mysql -u wordpressuser -p -h wordpressdbclixx.czuum48cat54.us-east-1.rds.amazonaws.com -D wordpressdb -pW3lcome123 -sse "select option_value from wp_options where option_value like 'FinalCliXX-LB%';")
+output_variable=$(mysql -u wordpressuser -p -h stack-clixx-db.czuum48cat54.us-east-1.rds.amazonaws.com -D wordpressdb -pW3lcome123 -sse "select option_value from wp_options where option_value like 'FinalCliXX-LB%';")
 
 if [ output_variable == ${DNS} ]
 then
@@ -77,7 +77,7 @@ then
 else
     echo "DNS Address is not in the table"
     #Logging DB
-    mysql -u wordpressuser -p -h wordpressdbclixx.czuum48cat54.us-east-1.rds.amazonaws.com -D wordpressdb -pW3lcome123<<EOF
+    mysql -u wordpressuser -p -h stack-clixx-db.czuum48cat54.us-east-1.rds.amazonaws.com -D wordpressdb -pW3lcome123<<EOF
     UPDATE wp_options SET option_value ='${DNS}' WHERE option_value LIKE 'CliXX-APP-%';
 EOF
 fi
