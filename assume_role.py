@@ -652,12 +652,10 @@ if __name__=="__main__":
     assumed_role_object=sts_client.assume_role(RoleArn='arn:aws:iam::054037131148:role/Engineer', RoleSessionName='mysession')
     credentials=assumed_role_object['Credentials']
     print(credentials)
-    vpc_txt_loc='/src/github.com/Brieann1007/CliXX_PIPELINE_DEPLOY/vpc.txt'
     vpc_id = create_vpc(service="ec2")
     public_subnets, private_subnets = create_subnets(vpc_id)
     ig_id = create_internet_gateway(vpc_id)
     nat_gateway_id, eip_id = create_nat_gateway(vpc_id, public_subnets)
-    time.sleep(190)
     public_rt_id, private_rt_id = create_route_table(vpc_id, public_subnets, ig_id, private_subnets, nat_gateway_id)
     security_group_id = create_security_group(vpc_id)
     file_system_id = create_file_system()
