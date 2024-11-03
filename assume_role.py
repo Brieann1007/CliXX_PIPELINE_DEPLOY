@@ -516,11 +516,11 @@ def create_autoscaling_group(security_group_id, tg_arn, public_subnets):
     rds_endpoint_address = rds_add_param['Parameter']['Value']
     print('Retrieved Endpoint address from SSM: %s' % (rds_endpoint_address))
     autoscaling=boto3.client('autoscaling',aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'],region_name='us-east-1')
-    user_data_script = """#!/bin/bash -xe
+    user_data_script = f"""#!/bin/bash -xe
     # Variables
-    DNS='%s'
-    FILE_SYSTEM_ID='%s'
-    DB_ADDRESS='%s'
+    DNS='{load_balancer_dns}'
+    FILE_SYSTEM_ID='{file_system_id}'
+    DB_ADDRESS='{rds_endpoint_address}'
     # Update packages and install needed tools
     sudo yum update -y
     sudo yum install -y nfs-utils git httpd mariadb-server
@@ -554,7 +554,7 @@ def create_autoscaling_group(security_group_id, tg_arn, public_subnets):
     fi
     # Update Apache configuration to allow WordPress permalinks
     sudo sed -i '151s/None/All/' /etc/httpd/conf/httpd.conf
-    sudo sed -i 's/wordpress-db.cc5iigzknvxd.us-east-1.rds.amazonaws.com/${DB_ADDRESS}/' /var/www/html/wp-config.php
+    sudo sed -i 's/wordpress-db.cc5iigzknvxd.us-east-1.rds.amazonaws.com/stack-clixx-db.czuum48cat54.us-east-1.rds.amazonaws.com /' /var/www/html/wp-config.php
     # Verify and update DNS in the database
     output_variable=$(mysql -u wordpressuser -pW3lcome123 -h ${DB_ADDRESS} -D wordpressdb -sse "SELECT option_value FROM wp_options WHERE option_value LIKE 'FinalCliXX-LB%';")
     if [ "$output_variable" == "${DNS}" ]; then
@@ -571,7 +571,7 @@ def create_autoscaling_group(security_group_id, tg_arn, public_subnets):
     find /var/www -type d -exec sudo chmod 2775 {} \;
     find /var/www -type f -exec sudo chmod 0664 {} \;
     sudo systemctl restart httpd
-    """ % (load_balancer_dns, file_system_id, rds_endpoint_address)
+    """
     user_data_base64code = base64.b64encode(user_data_script.encode('utf-8')).decode('utf-8')
     
     # Get availability zones
