@@ -496,7 +496,7 @@ def get_ssm_parameter(parameter_name):
     response = ssm.get_parameter(Name=parameter_name)
     return response['Parameter']['Value']
 
-def create_autoscaling_group(load_balancer_dns, security_group_id, tg_arn, public_subnets, file_system_id):
+def create_autoscaling_group(security_group_id, tg_arn, public_subnets):
     sts_client=boto3.client('sts')
     #Calling the assume_role function
     assumed_role_object=sts_client.assume_role(RoleArn='arn:aws:iam::054037131148:role/Engineer', RoleSessionName='mysession')
@@ -632,6 +632,6 @@ if __name__=="__main__":
     file_system_id = create_file_system()
     tg_arn = create_target_group(vpc_id)
     load_balancer_arn, load_balancer_dns= create_load_balancer(security_group_id,tg_arn, public_subnets)
-    rds_identifier = create_rds_instance(vpc_id, private_subnets, security_group_id)
-    asg_arn = create_autoscaling_group(load_balancer_dns, security_group_id, tg_arn, public_subnets, file_system_id)
+    rds_identifier, rds_endpoint_address = create_rds_instance(vpc_id, private_subnets, security_group_id)
+    asg_arn = create_autoscaling_group(security_group_id, tg_arn, public_subnets)
     
