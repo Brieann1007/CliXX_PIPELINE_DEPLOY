@@ -490,117 +490,78 @@ def create_rds_instance(vpc_id, private_subnets, security_group_id):
     
     return rds_identifier
 
+def get_ssm_parameter(parameter_name):
+    """Retrieve a parameter from AWS SSM Parameter Store."""
+    ssm = boto3.client('ssm', region_name='us-east-1')
+    response = ssm.get_parameter(Name=parameter_name)
+    return response['Parameter']['Value']
+
 def create_autoscaling_group(load_balancer_dns, security_group_id, tg_arn, public_subnets, file_system_id):
     sts_client=boto3.client('sts')
     #Calling the assume_role function
     assumed_role_object=sts_client.assume_role(RoleArn='arn:aws:iam::054037131148:role/Engineer', RoleSessionName='mysession')
     credentials=assumed_role_object['Credentials']
     print(credentials)
+    load_balancer_dns = get_ssm_parameter('/clixx/LoadbalancerDNS')
+    file_system_id = get_ssm_parameter('/clixx/efs')
+    rds_endpoint_address = get_ssm_parameter('/clixx/db_endpoint_address')
     autoscaling=boto3.client('autoscaling',aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'],region_name='us-east-1')
     user_data_script = """#!/bin/bash -xe
- 
-            #Variable 
-            DNS='%s'
-            FILE_SYSTEM_ID='%s'
-            ##Install the needed packages and enable the services(MariaDb, Apache)
-            sudo yum update -y
-
-            #Get Ipaddress
-            #IP_ADDRESS=$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4)
-
-            #Mounting 
-            sudo yum install -y nfs-utils
-            
-            AVAILABILITY_ZONE=$(curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone )
-            REGION=${AVAILABILITY_ZONE:0:-1}
-            MOUNT_POINT=/var/www/html
-            sudo mkdir -p ${MOUNT_POINT}
-            sudo chown ec2-user:ec2-user ${MOUNT_POINT}
-            sudo echo ${FILE_SYSTEM_ID}.efs.${REGION}.amazonaws.com:/ ${MOUNT_POINT} nfs4 nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,_netdev 0 0 >> /etc/fstab
-            sudo mount -a -t nfs4
-            sudo chmod -R 755 /var/www/html
-
-            sudo yum install git -y
-            sudo amazon-linux-extras install -y lamp-mariadb10.2-php7.2 php7.2
-            sudo yum install -y httpd mariadb-server
-            sudo systemctl start httpd
-            sudo systemctl enable httpd
-            sudo systemctl is-enabled httpd
- 
-            ##Add ec2-user to Apache group and grant permissions to /var/www
-            sudo usermod -a -G apache ec2-user
-            sudo chown -R ec2-user:apache /var/www
-            sudo chmod 2775 /var/www && find /var/www -type d -exec sudo chmod 2775 {} \;
-            find /var/www -type f -exec sudo chmod 0664 {} \;
-            cd /var/www/html
- 
-            #Install wordpress and unzip it/copy the sample php conf to wp-config
-            ##sudo wget https://wordpress.org/latest.tar.gz
-            ##sudo tar -xzf latest.tar.gz
-            ##cp wordpress/wp-config-sample.php wordpress/wp-config.php
-            ##start the mariadb and create a database/user and grant priv
- 
-            if [ -f /var/www/html/wp-config.php ]
-            then
-                echo "wp-config.php already exists"
-            else
-                echo "wp-config.php does not exist"
-                git clone https://github.com/stackitgit/CliXX_Retail_Repository.git
-            fi
-        
-
-
-            #git clone https://github.com/stackitgit/CliXX_Retail_Repository.git
-            cp -r CliXX_Retail_Repository/* /var/www/html
- 
-            ## set Wordpress to run in an alternative directory
-            #sudo mkdir /var/www/html/blog
-            #sudo cp -r wordpress/* /var/www/html/
- 
-            ## Allow wordpress to use Permalinks
-            sudo sed -i '151s/None/All/' /etc/httpd/conf/httpd.conf
-            sudo sed -i 's/wordpress-db.cc5iigzknvxd.us-east-1.rds.amazonaws.com/stack-clixx-db.czuum48cat54.us-east-1.rds.amazonaws.com/' /var/www/html/wp-config.php
-            if [ $? == 0 ]
-            then
-                echo "sed was done"
-            else
-                echo "sed was not done"
-            fi
-
-            output_variable=$(mysql -u wordpressuser -p -h stack-clixx-db.czuum48cat54.us-east-1.rds.amazonaws.com -D wordpressdb -pW3lcome123 -sse "select option_value from wp_options where option_value like 'FinalCliXX-LB%';")
-
-            if [ output_variable == ${DNS} ]
-            then
-                echo "DNS Address in the the table"
-            else
-                echo "DNS Address is not in the table"
-            #Logging DB
-            mysql -u wordpressuser -p -h stack-clixx-db.czuum48cat54.us-east-1.rds.amazonaws.com -D wordpressdb -pW3lcome123<<EOF
-            UPDATE wp_options SET option_value ='${DNS}' WHERE option_value LIKE 'CliXX-APP-%';
-EOF
-            fi
-
-
-            ##Grant file ownership of /var/www & its contents to apache user
-            sudo chown -R apache /var/www
- 
-            ##Grant group ownership of /var/www & contents to apache group
-            sudo chgrp -R apache /var/www
- 
-            ##Change directory permissions of /var/www & its subdir to add group write 
-            sudo chmod 2775 /var/www
-            find /var/www -type d -exec sudo chmod 2775 {} \;
- 
-            ##Recursively change file permission of /var/www & subdir to add group write perm
-            sudo find /var/www -type f -exec sudo chmod 0664 {} \;
- 
-            ##Restart Apache
-            sudo systemctl restart httpd
-            sudo service httpd restart
- 
-            ##Enable httpd 
-            sudo systemctl enable httpd 
-            sudo /sbin/sysctl -w net.ipv4.tcp_keepalive_time=200 net.ipv4.tcp_keepalive_intvl=200 net.ipv4.tcp_keepalive_probes=5""" % (load_balancer_dns, file_system_id)
+    # Variables
+    DNS='%s'
+    FILE_SYSTEM_ID='%s'
+    DB_ADDRESS='%s'
+    # Update packages and install needed tools
+    sudo yum update -y
+    sudo yum install -y nfs-utils git httpd mariadb-server
+    sudo amazon-linux-extras install -y lamp-mariadb10.2-php7.2 php7.2
+    # Mounting EFS
+    AVAILABILITY_ZONE=$(curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone)
+    REGION=${AVAILABILITY_ZONE:0:-1}
+    MOUNT_POINT=/var/www/html
+    sudo mkdir -p ${MOUNT_POINT}
+    sudo chown ec2-user:ec2-user ${MOUNT_POINT}
+    echo "${FILE_SYSTEM_ID}.efs.${REGION}.amazonaws.com:/ ${MOUNT_POINT} nfs4 nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,_netdev 0 0" | sudo tee -a /etc/fstab
+    sudo mount -a
+    sudo chmod -R 755 /var/www/html
+    # Enable and start Apache service
+    sudo systemctl enable httpd
+    sudo systemctl start httpd
+    # Configure permissions for /var/www
+    sudo usermod -a -G apache ec2-user
+    sudo chown -R ec2-user:apache /var/www
+    sudo chmod 2775 /var/www
+    find /var/www -type d -exec sudo chmod 2775 {} \;
+    find /var/www -type f -exec sudo chmod 0664 {} \;
+    # Install WordPress if not already present
+    cd /var/www/html
+    if [ ! -f wp-config.php ]; then
+        echo "wp-config.php does not exist, cloning repository..."
+        git clone https://github.com/stackitgit/CliXX_Retail_Repository.git
+        cp -r CliXX_Retail_Repository/* /var/www/html
+    else
+        echo "wp-config.php already exists"
+    fi
+    # Update Apache configuration to allow WordPress permalinks
+    sudo sed -i '151s/None/All/' /etc/httpd/conf/httpd.conf
+    sudo sed -i 's/wordpress-db.cc5iigzknvxd.us-east-1.rds.amazonaws.com/${DB_ADDRESS}/' /var/www/html/wp-config.php
+    # Verify and update DNS in the database
+    output_variable=$(mysql -u wordpressuser -pW3lcome123 -h ${DB_ADDRESS} -D wordpressdb -sse "SELECT option_value FROM wp_options WHERE option_value LIKE 'FinalCliXX-LB%';")
+    if [ "$output_variable" == "${DNS}" ]; then
+        echo "DNS Address found in the table"
+    else
+        echo "DNS Address not found in the table, updating..."
+        mysql -u wordpressuser -pW3lcome123 -h ${DB_ADDRESS} -D wordpressdb <<EOF
+        UPDATE wp_options SET option_value='${DNS}' WHERE option_value LIKE 'CliXX-APP-%';
+    EOF
+    fi
+    # Grant file ownership and restart Apache
+    sudo chown -R apache:apache /var/www
+    sudo chmod 2775 /var/www
+    find /var/www -type d -exec sudo chmod 2775 {} \;
+    find /var/www -type f -exec sudo chmod 0664 {} \;
+    sudo systemctl restart httpd
+    """ % (load_balancer_dns, file_system_id, rds_endpoint_address)
     user_data_base64code = base64.b64encode(user_data_script.encode('utf-8')).decode('utf-8')
     
     # Get availability zones
