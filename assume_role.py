@@ -502,9 +502,19 @@ def create_autoscaling_group(load_balancer_dns, security_group_id, tg_arn, publi
     assumed_role_object=sts_client.assume_role(RoleArn='arn:aws:iam::054037131148:role/Engineer', RoleSessionName='mysession')
     credentials=assumed_role_object['Credentials']
     print(credentials)
-    load_balancer_dns = get_ssm_parameter('/clixx/LoadbalancerDNS')
-    file_system_id = get_ssm_parameter('/clixx/efs')
-    rds_endpoint_address = get_ssm_parameter('/clixx/db_endpoint_address')
+    ssm = boto3.client('ssm', aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'], region_name='us-east-1')
+    # Retrieve LB DNS from SSM Parameter Store
+    lb_dns_param = ssm.get_parameter(Name='/clixx/LoadbalancerDNS')
+    load_balancer_dns = lb_dns_param['Parameter']['Value']
+    print('Retrieved Load Balancer DNS from SSM: %s' % (load_balancer_dns))
+    # Retrieve EFS ID from SSM Parameter Store
+    efs_sys_param = ssm.get_parameter(Name='/clixx/efs')
+    file_system_id = efs_sys_param['Parameter']['Value']
+    print('Retrieved EFS ID from SSM: %s' % (file_system_id))
+    # Retrieve RDS endpoint address from SSM Parameter Store
+    rds_add_param = ssm.get_parameter(Name='/clixx/db_endpoint_address')
+    rds_endpoint_address = rds_add_param['Parameter']['Value']
+    print('Retrieved Endpoint address from SSM: %s' % (rds_endpoint_address))
     autoscaling=boto3.client('autoscaling',aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'],region_name='us-east-1')
     user_data_script = """#!/bin/bash -xe
     # Variables
