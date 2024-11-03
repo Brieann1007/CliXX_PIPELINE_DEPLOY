@@ -584,8 +584,8 @@ def create_autoscaling_group(security_group_id, tg_arn, public_subnets):
     user_data_base64code = base64.b64encode(user_data_script.encode('utf-8')).decode('utf-8')
     
     # Get availability zones
-    ec2=boto3.client('autoscaling',aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'],region_name='us-east-1')
-    availability_zones = [az['ZoneName'] for az in ec2.describe_availability_zones()['AvailabilityZones']]
+    ec2_client=boto3.client('ec2',aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'],region_name='us-east-1')
+    availability_zones = [az['ZoneName'] for az in ec2_client.describe_availability_zones()['AvailabilityZones']]
     print(availability_zones)
     launch_template_response = autoscaling.create_launch_template(
         LaunchTemplateName='stack-clixx-launch-template',
