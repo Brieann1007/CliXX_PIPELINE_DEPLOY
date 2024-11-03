@@ -476,10 +476,10 @@ def create_rds_instance(private_subnets, security_group_id):
         response = rds.describe_db_instances(DBInstanceIdentifier=rds_identifier)
         db_instance = response['DBInstances'][0]
         if db_instance['DBInstanceStatus'] == 'available':
-            endpoint_address = db_instance['Endpoint']['Address']
-            print("RDS Endpoint Address: %s" % (endpoint_address))
+            rds_endpoint_address = db_instance['Endpoint']['Address']
+            print("RDS Endpoint Address: %s" % (rds_endpoint_address))
             try:
-                ssm.put_parameter(Name='/clixx/db_endpoint_address', Value=endpoint_address, Type='String', Overwrite=True)
+                ssm.put_parameter(Name='/clixx/db_endpoint_address', Value=rds_endpoint_address, Type='String', Overwrite=True)
                 print("Endpoint address saved to SSM Parameter Store.")
             except ClientError as e:
                 print("Error saving endpoint address to SSM: %s" % (e))
@@ -488,7 +488,7 @@ def create_rds_instance(private_subnets, security_group_id):
             print("Waiting for RDS instance to become available...")
             time.sleep(30)  # Wait 30 seconds before checking again
     
-    return rds_identifier
+    return rds_identifier, rds_endpoint_address
 
 def get_ssm_parameter(parameter_name):
     """Retrieve a parameter from AWS SSM Parameter Store."""
