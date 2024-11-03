@@ -521,28 +521,33 @@ def create_autoscaling_group(security_group_id, tg_arn, public_subnets):
     DNS='{load_balancer_dns}'
     FILE_SYSTEM_ID='{file_system_id}'
     DB_ADDRESS='{rds_endpoint_address}'
+
     # Update packages and install needed tools
     sudo yum update -y
     sudo yum install -y nfs-utils git httpd mariadb-server
     sudo amazon-linux-extras install -y lamp-mariadb10.2-php7.2 php7.2
+
     # Mounting EFS
     AVAILABILITY_ZONE=$(curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone)
-    REGION=${AVAILABILITY_ZONE:0:-1}
+    REGION=${{AVAILABILITY_ZONE:0:-1}}
     MOUNT_POINT=/var/www/html
-    sudo mkdir -p ${MOUNT_POINT}
-    sudo chown ec2-user:ec2-user ${MOUNT_POINT}
-    echo "${FILE_SYSTEM_ID}.efs.${REGION}.amazonaws.com:/ ${MOUNT_POINT} nfs4 nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,_netdev 0 0" | sudo tee -a /etc/fstab
+    sudo mkdir -p ${{MOUNT_POINT}}
+    sudo chown ec2-user:ec2-user ${{MOUNT_POINT}}
+    echo "${{FILE_SYSTEM_ID}}.efs.${{REGION}}.amazonaws.com:/ ${{MOUNT_POINT}} nfs4 nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,_netdev 0 0" | sudo tee -a /etc/fstab
     sudo mount -a
     sudo chmod -R 755 /var/www/html
+
     # Enable and start Apache service
     sudo systemctl enable httpd
     sudo systemctl start httpd
+
     # Configure permissions for /var/www
     sudo usermod -a -G apache ec2-user
     sudo chown -R ec2-user:apache /var/www
     sudo chmod 2775 /var/www
-    find /var/www -type d -exec sudo chmod 2775 {} \;
-    find /var/www -type f -exec sudo chmod 0664 {} \;
+    find /var/www -type d -exec sudo chmod 2775 {{}} \;
+    find /var/www -type f -exec sudo chmod 0664 {{}} \;
+
     # Install WordPress if not already present
     cd /var/www/html
     if [ ! -f wp-config.php ]; then
@@ -552,26 +557,30 @@ def create_autoscaling_group(security_group_id, tg_arn, public_subnets):
     else
         echo "wp-config.php already exists"
     fi
+
     # Update Apache configuration to allow WordPress permalinks
     sudo sed -i '151s/None/All/' /etc/httpd/conf/httpd.conf
-    sudo sed -i 's/wordpress-db.cc5iigzknvxd.us-east-1.rds.amazonaws.com/stack-clixx-db.czuum48cat54.us-east-1.rds.amazonaws.com /' /var/www/html/wp-config.php
+    sudo sed -i "s|wordpress-db.cc5iigzknvxd.us-east-1.rds.amazonaws.com|${{DB_ADDRESS}}|" /var/www/html/wp-config.php
+
     # Verify and update DNS in the database
-    output_variable=$(mysql -u wordpressuser -pW3lcome123 -h ${DB_ADDRESS} -D wordpressdb -sse "SELECT option_value FROM wp_options WHERE option_value LIKE 'FinalCliXX-LB%';")
-    if [ "$output_variable" == "${DNS}" ]; then
+    output_variable=$(mysql -u wordpressuser -pW3lcome123 -h ${{DB_ADDRESS}} -D wordpressdb -sse "SELECT option_value FROM wp_options WHERE option_value LIKE 'FinalCliXX-LB%';")
+    if [ "$output_variable" == "${{DNS}}" ]; then
         echo "DNS Address found in the table"
     else
         echo "DNS Address not found in the table, updating..."
-        mysql -u wordpressuser -pW3lcome123 -h ${DB_ADDRESS} -D wordpressdb <<EOF
-        UPDATE wp_options SET option_value='${DNS}' WHERE option_value LIKE 'CliXX-APP-%';
+        mysql -u wordpressuser -pW3lcome123 -h ${{DB_ADDRESS}} -D wordpressdb <<EOF
+    UPDATE wp_options SET option_value='${{DNS}}' WHERE option_value LIKE 'CliXX-APP-%';
     EOF
     fi
+
     # Grant file ownership and restart Apache
     sudo chown -R apache:apache /var/www
     sudo chmod 2775 /var/www
-    find /var/www -type d -exec sudo chmod 2775 {} \;
-    find /var/www -type f -exec sudo chmod 0664 {} \;
+    find /var/www -type d -exec sudo chmod 2775 {{}} \;
+    find /var/www -type f -exec sudo chmod 0664 {{}} \;
     sudo systemctl restart httpd
     """
+
     user_data_base64code = base64.b64encode(user_data_script.encode('utf-8')).decode('utf-8')
     
     # Get availability zones
