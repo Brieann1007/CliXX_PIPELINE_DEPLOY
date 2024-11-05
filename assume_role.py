@@ -345,6 +345,24 @@ def create_file_system():
     print("EFS File System created with ID:", file_system_id)
     save_to_ssm('/clixx/efs', file_system_id)
     return file_system_id
+
+def create_efs_mount_target(file_system_id, public_subnets, security_group_id):
+    # Assume role for credentials
+    sts_client = boto3.client('sts')
+    assumed_role_object = sts_client.assume_role(RoleArn='arn:aws:iam::054037131148:role/Engineer', RoleSessionName='mysession')
+    credentials = assumed_role_object['Credentials']
+    # Initialize the EFS client with assumed credentials
+    efs = boto3.client('efs',aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'], region_name='us-east-1')
+    # Create the EFS mount target
+    response = efs.create_mount_target(
+        FileSystemId=file_system_id,
+        SubnetId=public_subnets,
+        SecurityGroups=[security_group_id]
+    )
+    mount_target_id = response['MountTargetId']
+    print("EFS Mount Target created with ID:", mount_target_id)
+    save_to_ssm('/clixx/mounttargetid', mount_target_id)
+    return mount_target_id
     
 def create_target_group(vpc_id):
     sts_client=boto3.client('sts')
@@ -614,7 +632,7 @@ def create_autoscaling_group(security_group_id, tg_arn, public_subnets):
         VPCZoneIdentifier=','.join(public_subnets)
         )
     response = autoscaling.describe_auto_scaling_groups(
-        AutoScalingGroupNames='stack-clixx-boto-asg'
+        AutoScalingGroupNames=['stack-clixx-boto-asg']
     )
     
     if response['AutoScalingGroups']:
@@ -625,6 +643,7 @@ def create_autoscaling_group(security_group_id, tg_arn, public_subnets):
     else:
         print("AutoScaling Group not found.")
         return None
+    
     
 if __name__=="__main__":
     sts_client=boto3.client('sts')
