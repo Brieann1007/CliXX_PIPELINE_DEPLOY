@@ -513,7 +513,11 @@ def get_ssm_parameter(parameter_name):
     ssm = boto3.client('ssm', region_name='us-east-1')
     response = ssm.get_parameter(Name=parameter_name)
     return response['Parameter']['Value']
-
+Pull the following key pair from aws account: clixx_boto
+rsa
+2024/11/04 20:10 GMT-8
+b9:46:89:01:8c:12:1d:be:18:1b:cb:79:40:72:9c:a5:84:c4:81:e5
+key-0c84f597f27c24ee8 attach the key pair from  the following auto scaling group. 
 def create_autoscaling_group(security_group_id, tg_arn, public_subnets):
     sts_client=boto3.client('sts')
     #Calling the assume_role function
@@ -611,6 +615,7 @@ def create_autoscaling_group(security_group_id, tg_arn, public_subnets):
             'ImageId': 'ami-0ddc798b3f1a5117e',
             'InstanceType': 't3.micro',
             'SecurityGroupIds': [security_group_id],
+            'KeyName': 'clixx_boto',
             'UserData': user_data_base64code
                 }
             )
