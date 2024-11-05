@@ -348,18 +348,19 @@ def create_file_system():
 
 def create_efs_mount_target(file_system_id, public_subnets, security_group_id):
     # Assume role for credentials
-    sts_client = boto3.client('sts')
-    assumed_role_object = sts_client.assume_role(RoleArn='arn:aws:iam::054037131148:role/Engineer', RoleSessionName='mysession')
-    credentials = assumed_role_object['Credentials']
+    sts_client=boto3.client('sts')
+    assumed_role_object=sts_client.assume_role(RoleArn='arn:aws:iam::054037131148:role/Engineer', RoleSessionName='mysession')
+    credentials=assumed_role_object['Credentials']
+    print(credentials)
     # Initialize the EFS client with assumed credentials
-    efs = boto3.client('efs',aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'], region_name='us-east-1')
+    efs=boto3.client('efs',aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'], region_name='us-east-1')
     # Create the EFS mount target
-    response = efs.create_mount_target(
+    response=efs.create_mount_target(
         FileSystemId=file_system_id,
         SubnetId=public_subnets,
         SecurityGroups=[security_group_id]
     )
-    mount_target_id = response['MountTargetId']
+    mount_target_id=response['MountTargetId']
     print("EFS Mount Target created with ID:", mount_target_id)
     save_to_ssm('/clixx/mounttargetid', mount_target_id)
     return mount_target_id
