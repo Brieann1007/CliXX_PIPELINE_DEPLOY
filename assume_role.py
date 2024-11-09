@@ -209,6 +209,17 @@ def create_nat_gateway(vpc_id, public_subnet_ids):
             
     return nat_gateway_id, eip_id
 
+def wait_for_route_table(ec2, route_table_id):
+    """Wait for the route table to be available."""
+    while True:
+        try:
+            ec2.describe_route_tables(RouteTableIds=[route_table_id])
+            print(f"Route table {route_table_id} is now available.")
+            break
+        except ClientError as e:
+            print(f"Waiting for route table {route_table_id} to be available: {e}")
+            time.sleep(2)
+
 def create_route_table(vpc_id, public_subnet_ids, ig_id, private_subnet_ids, nat_gateway_id):
     sts_client=boto3.client('sts')
     #Calling the assume_role function
@@ -220,8 +231,11 @@ def create_route_table(vpc_id, public_subnet_ids, ig_id, private_subnet_ids, nat
     public_rt_response = ec2.create_route_table(VpcId=vpc_id)
     public_rt_id = public_rt_response['RouteTable']['RouteTableId']
     print('Created Public Route Table with ID: %s' % (public_rt_id))
-    # Tag the Route Table
+    
+    # Wait for the public route table to be available before tagging
+    wait_for_route_table(ec2, public_rt_id)
     ec2.create_tags(Resources=[public_rt_id], Tags=[{'Key': 'Name', 'Value': 'clixx-public-boto-rtb'}])
+    print("Tagged Public Route Table with Name: clixx-public-boto-rtb")
     
     # Create route to Internet Gateway in Public Route Table
     ec2.create_route(
@@ -241,6 +255,11 @@ def create_route_table(vpc_id, public_subnet_ids, ig_id, private_subnet_ids, nat
     private_rt_response = ec2.create_route_table(VpcId=vpc_id)
     private_rt_id = private_rt_response['RouteTable']['RouteTableId']
     print('Created Private Route Table with ID: %s' % (private_rt_id))
+
+    # Wait for the private route table to be available before tagging
+    wait_for_route_table(ec2, private_rt_id)
+    ec2.create_tags(Resources=[private_rt_id], Tags=[{'Key': 'Name', 'Value': 'clixx-private-boto-rtb'}])
+    print("Tagged Private Route Table with Name: clixx-private-boto-rtb")
 
     # Create route to NAT Gateway in Private Route Table
     ec2.create_route(
