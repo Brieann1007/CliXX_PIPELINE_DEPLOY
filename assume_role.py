@@ -354,16 +354,29 @@ def create_efs_mount_target(file_system_id, public_subnets, security_group_id):
     print(credentials)
     # Initialize the EFS client with assumed credentials
     efs=boto3.client('efs',aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'], region_name='us-east-1')
-    # Create the EFS mount target
-    response=efs.create_mount_target(
-        FileSystemId=file_system_id,
-        SubnetId=public_subnets,
-        SecurityGroups=[security_group_id]
-    )
-    mount_target_id=response['MountTargetId']
-    print("EFS Mount Target created with ID:", mount_target_id)
-    save_to_ssm('/clixx/mounttargetid', mount_target_id)
-    return mount_target_id
+    # List to store mount target IDs for each subnet
+    mount_target_ids = []
+    # Loop through each subnet to create a mount target
+    for subnet_id in public_subnets:
+        try:
+            response = efs.create_mount_target(
+                FileSystemId=file_system_id,
+                SubnetId=subnet_id,
+                SecurityGroups=[security_group_id]
+            )
+            mount_target_id = response['MountTargetId']
+            mount_target_ids.append(mount_target_id)
+            print(f"EFS Mount Target created with ID: {mount_target_id} in Subnet: {subnet_id}")
+        except ClientError as e:
+            print(f"Error creating mount target in Subnet {subnet_id}: {e}")
+
+    # Save mount target IDs to SSM
+    if mount_target_ids:
+        save_to_ssm('/clixx/mounttargetids', ','.join(mount_target_ids))
+    else:
+        print("No mount targets were created.")
+
+    return mount_target_ids
     
 def create_target_group(vpc_id):
     sts_client=boto3.client('sts')
