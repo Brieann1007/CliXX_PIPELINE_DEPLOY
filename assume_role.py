@@ -323,21 +323,12 @@ def create_file_system():
     KmsKeyId='15a7670d-cdec-4cb6-b89a-8e6a0d492c13',
     ThroughputMode='bursting',
     #ProvisionedThroughputInMibps=123.0,
-    AvailabilityZoneName='us-east-1a',
+    #AvailabilityZoneName='us-east-1a',
     Backup=True,
     Tags=[
-        {
-            'Key': 'Name',
-            'Value': 'stack-CliXX-efs-cli'
-        },
-        {
-            'Key': 'GroupName',
-            'Value': 'stackcloud12'
-        },
-        {
-            'Key': 'OwnerEmail',
-            'Value': 'brieann1007@outlook.com'
-        }
+        {'Key': 'Name','Value': 'stack-CliXX-efs-cli'},
+        {'Key': 'GroupName','Value': 'stackcloud12'},
+        {'Key': 'OwnerEmail','Value': 'brieann1007@outlook.com'}
         ]
     )
     # Extract the File System ID
