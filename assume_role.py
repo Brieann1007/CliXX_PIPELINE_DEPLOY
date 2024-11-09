@@ -335,6 +335,13 @@ def create_file_system():
     file_system_id = response['FileSystemId']
     print("EFS File System created with ID:", file_system_id)
     save_to_ssm('/clixx/efs', file_system_id)
+    
+    # Wait for the EFS file system to become available
+    print("Waiting for EFS File System to become available...")
+    waiter = efs.get_waiter('file_system_available')
+    waiter.wait(FileSystemId=file_system_id)
+    print("EFS File System is now available.")
+    
     return file_system_id
 
 def create_efs_mount_target(file_system_id, public_subnets, security_group_id):
