@@ -664,6 +664,7 @@ if __name__=="__main__":
     public_rt_id, private_rt_id = create_route_table(vpc_id, public_subnets, ig_id, private_subnets, nat_gateway_id)
     security_group_id = create_security_group(vpc_id)
     file_system_id = create_file_system()
+    mount_target_ids = create_efs_mount_target(file_system_id, public_subnets, security_group_id)
     tg_arn = create_target_group(vpc_id)
     load_balancer_arn, load_balancer_dns= create_load_balancer(security_group_id,tg_arn, public_subnets)
     rds_identifier, rds_endpoint_address = create_rds_instance(private_subnets, security_group_id)
