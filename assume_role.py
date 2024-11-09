@@ -621,6 +621,14 @@ def create_autoscaling_group(security_group_id, tg_arn, public_subnets):
     # Update Apache configuration to allow WordPress permalinks
     sudo sed -i '151s/None/All/' /etc/httpd/conf/httpd.conf
     sudo sed -i "s|wordpress-db.cc5iigzknvxd.us-east-1.rds.amazonaws.com|${{DB_ADDRESS}}|" /var/www/html/wp-config.php
+    
+    # Wait for RDS endpoint to be accessible
+    echo "Checking if RDS endpoint is available..."
+    while ! mysqladmin ping -h "${{DB_ADDRESS}}" --silent; do
+        echo "Waiting for database connection..."
+        sleep 10
+    done
+    echo "Database is available!"
 
     # Verify and update DNS in the database
     output_variable=$(mysql -u wordpressuser -pW3lcome123 -h ${{DB_ADDRESS}} -D wordpressdb -sse "SELECT option_value FROM wp_options WHERE option_value LIKE 'FinalCliXX-LB%';")
