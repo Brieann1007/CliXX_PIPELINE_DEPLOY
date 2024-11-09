@@ -355,11 +355,22 @@ def create_file_system():
     print("EFS File System created with ID:", file_system_id)
     save_to_ssm('/clixx/efs', file_system_id)
     
-    # Wait for the EFS file system to become available
+    # Custom waiter loop to wait for the file system to become available
     print("Waiting for EFS File System to become available...")
-    waiter = efs.get_waiter('file_system_available')
-    waiter.wait(FileSystemId=file_system_id)
-    print("EFS File System is now available.")
+    while True:
+        try:
+            # Describe the file system to check its status
+            file_system = efs.describe_file_systems(FileSystemId=file_system_id)
+            status = file_system['FileSystems'][0]['LifeCycleState']
+            if status == 'available':
+                print("EFS File System is now available.")
+                break
+            else:
+                print(f"EFS status: {status}. Waiting for 'available' state...")
+                time.sleep(5)  # Wait 5 seconds before checking again
+        except ClientError as e:
+            print(f"Error while waiting for EFS file system to become available: {e}")
+            time.sleep(5)  # Wait and retry in case of a temporary issue
     
     return file_system_id
 
