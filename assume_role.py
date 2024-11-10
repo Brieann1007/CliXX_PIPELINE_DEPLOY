@@ -631,14 +631,15 @@ def create_autoscaling_group(security_group_id, tg_arn, public_subnets):
     echo "Database is available!"
 
     # Verify and update DNS in the database
-    output_variable=$(mysql -u wordpressuser -pW3lcome123 -h ${{DB_ADDRESS}} -D wordpressdb -sse "SELECT option_value FROM wp_options WHERE option_value LIKE 'CliXX-APP-NLB%';")
-    if [ "$output_variable" == "${{DNS}}" ]; then
+    output_variable=$(mysql -uwordpressuser -pW3lcome123 -h ${{DB_ADDRESS}} -D wordpressdb -sse "SELECT option_value FROM wp_options WHERE option_value LIKE 'CliXX-APP-NLB%';")
+    if [ $output_variable == ${{DNS}} ]; then
         echo "DNS Address found in the table"
     else
         echo "DNS Address not found in the table, updating..."
         mysql -uwordpressuser -pW3lcome123 -h ${{DB_ADDRESS}} -D wordpressdb<<EOF
-        UPDATE wp_options SET option_value="${{DNS}}" WHERE option_value LIKE "CliXX-APP-NLB%";
-        EOF
+        UPDATE wp_options SET option_value="${{DNS}}" WHERE option_value LIKE "CliXX-APP-NLB%";     
+    EOF
+    
     fi
 
     # Grant file ownership and restart Apache
