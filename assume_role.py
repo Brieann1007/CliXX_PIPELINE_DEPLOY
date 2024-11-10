@@ -327,7 +327,7 @@ def create_security_group(vpc_id):
     
     except ClientError as e:
         print(e)
-        
+
 def create_file_system():
     sts_client=boto3.client('sts')
     #Calling the assume_role function
@@ -576,15 +576,16 @@ def create_autoscaling_group(security_group_id, tg_arn, public_subnets):
     rds_endpoint_address = rds_add_param['Parameter']['Value']
     print('Retrieved Endpoint address from SSM: %s' % (rds_endpoint_address))
     autoscaling=boto3.client('autoscaling',aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'],region_name='us-east-1')
-    user_data_script = f"""#!/bin/bash -xe
-    # Variables
-    DNS='{load_balancer_dns}'
-    FILE_SYSTEM_ID='{file_system_id}'
-    DB_ADDRESS='{rds_endpoint_address}'
+    user_data_script = f"""\n
+ #!/bin/bash -xe
+ # Variables
+ DNS='{load_balancer_dns}'
+ FILE_SYSTEM_ID='{file_system_id}'
+ DB_ADDRESS='{rds_endpoint_address}'
 
-    # Update packages and install needed tools
-    sudo yum update -y
-    sudo yum install -y nfs-utils git httpd mariadb-server
+ # Update packages and install needed tools
+ sudo yum update -y
+ sudo yum install -y nfs-utils git httpd mariadb-server
     sudo amazon-linux-extras install -y lamp-mariadb10.2-php7.2 php7.2
 
     # Mounting EFS
