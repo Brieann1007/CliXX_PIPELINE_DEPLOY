@@ -637,8 +637,8 @@ def create_autoscaling_group(security_group_id, tg_arn, public_subnets):
     else
         echo "DNS Address not found in the table, updating..."
         mysql -uwordpressuser -pW3lcome123 -h ${{DB_ADDRESS}} -D wordpressdb<<EOF
-        UPDATE wp_options SET option_value='${{DNS}}' WHERE option_value LIKE 'CliXX-APP-NLB%';
-    EOF
+        UPDATE wp_options SET option_value="${{DNS}}" WHERE option_value LIKE "CliXX-APP-NLB%";
+        EOF
     fi
 
     # Grant file ownership and restart Apache
