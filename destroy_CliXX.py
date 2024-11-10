@@ -5,7 +5,228 @@ import os
 import time
 from botocore.exceptions import ClientError
 
+def delete_nat_gateway(nat_gateway_id):
+    sts_client=boto3.client('sts')
+    #Calling the assume_role function
+    assumed_role_object=sts_client.assume_role(RoleArn='arn:aws:iam::054037131148:role/Engineer', RoleSessionName='mysession')
+    credentials=assumed_role_object['Credentials']
+    print(credentials)
+    ec2=boto3.client('ec2',aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'],region_name='us-east-1')
+    ssm = boto3.client('ssm', aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'], region_name='us-east-1')
+    try:
+        # Delete Nat Gateway ID from SSM Parameter Store
+        natgw_id_param = ssm.get_parameter(Name='/clixx/natgateway_id')
+        nat_gateway_id = natgw_id_param['Parameter']['Value']
+        print('Retrieved nat gateway ID from SSM: %s' % (nat_gateway_id))
+        # Finally, delete nat gateway
+        ec2.delete_nat_gateway(NatGatewayId=nat_gateway_id)
+        print('Deleted NAT Gateway with ID: %s' % (nat_gateway_id))
+    
+    except ClientError as e:
+        print("Error: %s" % (e))
+    
+def unmap_public_ip(public_subnet_id):
+    sts_client=boto3.client('sts')
+    #Calling the assume_role function
+    assumed_role_object=sts_client.assume_role(RoleArn='arn:aws:iam::054037131148:role/Engineer', RoleSessionName='mysession')
+    credentials=assumed_role_object['Credentials']
+    print(credentials)
+    ec2=boto3.client('ec2',aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'],region_name='us-east-1')
+    
+    # Get instances in the public subnet
+    instances = ec2.describe_instances(
+        Filters=[{'Name': 'subnet-id', 'Values': [public_subnet_id]}]
+    )
 
+    for reservation in instances['Reservations']:
+        for instance in reservation['Instances']:
+            # Disassociate Elastic IPs or unmap public IPs as needed
+            # Assuming EC2 instances have public IPs and need to be disassociated
+            if 'PublicIpAddress' in instance:
+                ec2.disassociate_address(AllocationId=instance['PublicIpAddress'])
+                print('Unmapped public IP %s from instance %s' % (instance["PublicIpAddress"],instance["InstanceId"]))
+                
+def release_address(eip_id):
+    sts_client=boto3.client('sts')
+    #Calling the assume_role function
+    assumed_role_object=sts_client.assume_role(RoleArn='arn:aws:iam::054037131148:role/Engineer', RoleSessionName='mysession')
+    credentials=assumed_role_object['Credentials']
+    print(credentials)
+    ec2=boto3.client('ec2',aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'],region_name='us-east-1')
+    ssm = boto3.client('ssm', aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'], region_name='us-east-1')
+    try:
+        # Retrieve Elastic IP ID from SSM Parameter Store
+        eip_id_param = ssm.get_parameter(Name='/clixx/eip_id')
+        eip_id = eip_id_param['Parameter']['Value']
+        print('Retrieved security group ID from SSM: %s' % (eip_id))
+        # Finally, release the Elastic IP
+        ec2.release_address(AllocationId=eip_id)
+        print('Released Elastic IP with ID: %s' % (eip_id))
+    
+    except ClientError as e:
+        print("Error: %s" % (e))
+    
+def delete_internet_gateway(ig_id, vpc_id):
+    sts_client=boto3.client('sts')
+    #Calling the assume_role function
+    assumed_role_object=sts_client.assume_role(RoleArn='arn:aws:iam::054037131148:role/Engineer', RoleSessionName='mysession')
+    credentials=assumed_role_object['Credentials']
+    print(credentials)
+    ec2=boto3.client('ec2',aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'],region_name='us-east-1')
+    ssm = boto3.client('ssm', aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'], region_name='us-east-1')
+    try:
+        # Retrieve Internet Gateway ID from SSM Parameter Store
+        igw_id_param = ssm.get_parameter(Name='/clixx/internetgateway_id')
+        ig_id = igw_id_param['Parameter']['Value']
+        print('Retrieved internet gateway ID from SSM: %s' % (ig_id))
+        # Finally, delete the Internet Gateway
+        ec2.detach_internet_gateway(InternetGatewayId=ig_id, VpcId=vpc_id)
+        ec2.delete_internet_gateway(InternetGatewayId=ig_id)
+        print('Deleted Internet Gateway with ID: %s' % (ig_id))
+    
+    except ClientError as e:
+        print("Error: %s" % (e))
+    
+def delete_subnet(subnet_id):
+    sts_client=boto3.client('sts')
+    #Calling the assume_role function
+    assumed_role_object=sts_client.assume_role(RoleArn='arn:aws:iam::054037131148:role/Engineer', RoleSessionName='mysession')
+    credentials=assumed_role_object['Credentials']
+    print(credentials)
+    ec2=boto3.client('ec2',aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'],region_name='us-east-1')
+    ssm = boto3.client('ssm', aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'], region_name='us-east-1')
+    try:
+        # Retrieve subnet IDs from SSM Parameter Store
+        public_subnet_ids_param = ssm.get_parameter(Name='/clixx/public_subnet_ids')
+        private_subnet_ids_param = ssm.get_parameter(Name='/clixx/private_subnet_ids')
+
+        public_subnet_ids = public_subnet_ids_param['Parameter']['Value'].split(',')
+        private_subnet_ids = private_subnet_ids_param['Parameter']['Value'].split(',')
+        print('Retrieved Public Subnet IDs: %s' % (public_subnet_ids))
+        print('Retrieved Private Subnet IDs: %s' % (private_subnet_ids))
+
+        # Delete public subnets
+        for subnet_id in public_subnet_ids:
+            ec2.delete_subnet(SubnetId=subnet_id)
+            print('Deleted Public Subnet: %s' % (subnet_id))
+
+        # Delete private subnets
+        for subnet_id in private_subnet_ids:
+            ec2.delete_subnet(SubnetId=subnet_id)
+            print('Deleted Private Subnet: %s' (subnet_id))
+    
+    except ClientError as e:
+        print("Error: %s" % (e))
+        
+def delete_security_group(security_group_id):
+    sts_client=boto3.client('sts')
+    #Calling the assume_role function
+    assumed_role_object=sts_client.assume_role(RoleArn='arn:aws:iam::054037131148:role/Engineer', RoleSessionName='mysession')
+    credentials=assumed_role_object['Credentials']
+    print(credentials)
+    ec2=boto3.client('ec2',aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'],region_name='us-east-1')
+    ssm = boto3.client('ssm', aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'], region_name='us-east-1')
+    try:
+        # Retrieve Security Group ID from SSM Parameter Store
+        sg_id_param = ssm.get_parameter(Name='/clixx/securitygroup_id')
+        security_group_id = sg_id_param['Parameter']['Value']
+        print('Retrieved security group ID from SSM: %s' % (security_group_id))
+        # Finally, delete the Target Group
+        ec2.delete_security_group(GroupId=security_group_id)
+        print('Deleted Security Group with ARN: %s' % (security_group_id))
+    
+    except ClientError as e:
+        print("Error: %s" % (e))
+    
+def delete_target_group(tg_arn):
+    sts_client=boto3.client('sts')
+    #Calling the assume_role function
+    assumed_role_object=sts_client.assume_role(RoleArn='arn:aws:iam::054037131148:role/Engineer', RoleSessionName='mysession')
+    credentials=assumed_role_object['Credentials']
+    print(credentials)
+    elbv2=boto3.client('elbv2',aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'],region_name='us-east-1')
+    ssm = boto3.client('ssm', aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'], region_name='us-east-1')
+    try:
+        # Retrieve Target Group ARN from SSM Parameter Store
+        tg_arn_param = ssm.get_parameter(Name='/clixx/targetgroupARN')
+        tg_arn = tg_arn_param['Parameter']['Value']
+        print('Retrieved target group arn from SSM: %s' % (tg_arn))
+        # Finally, delete the Target Group
+        elbv2.delete_target_group(TargetGroupArn=tg_arn)
+        print('Deleted Target Group with ID: %s' % (tg_arn))
+    
+    except ClientError as e:
+        print("Error: %s" % (e))
+    
+def delete_route_table(route_table_id):
+    sts_client=boto3.client('sts')
+    #Calling the assume_role function
+    assumed_role_object=sts_client.assume_role(RoleArn='arn:aws:iam::054037131148:role/Engineer', RoleSessionName='mysession')
+    credentials=assumed_role_object['Credentials']
+    print(credentials)
+    ec2=boto3.client('ec2',aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'],region_name='us-east-1')
+    ssm = boto3.client('ssm', aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'], region_name='us-east-1')
+    try:
+        # Retrieve Route Table ID from SSM Parameter Store
+        rt_pub_id_param = ssm.get_parameter(Name='/clixx/publicroutetable')
+        rt_priv_id_param = ssm.get_parameter(Name='/clixx/publicroutetable')
+        
+        pub_route_table_id = rt_pub_id_param['Parameter']['Value']
+        priv_route_table_id = rt_priv_id_param['Parameter']['Value']
+        print('Retrieved Public Route Table ID from SSM: %s' % (pub_route_table_id))
+        print('Retrieved Private Route Table ID from SSM: %s' % (priv_route_table_id))
+        # Finally, delete the Route Table
+        for route_table_id in pub_route_table_id:
+            ec2.delete_route_table(RouteTableId=route_table_id)
+            print('Deleted Public Route Table with ID: %s' % (route_table_id))
+
+        for route_table_id in priv_route_table_id:
+            ec2.delete_route_table(RouteTableId=route_table_id)
+            print('Deleted Private Route Table with ID: %s' % (route_table_id))
+    
+    except ClientError as e:
+        print("Error: %s" % (e))
+    
+def delete_load_balancer(load_balancer_arn):
+    sts_client=boto3.client('sts')
+    #Calling the assume_role function
+    assumed_role_object=sts_client.assume_role(RoleArn='arn:aws:iam::054037131148:role/Engineer', RoleSessionName='mysession')
+    credentials=assumed_role_object['Credentials']
+    print(credentials)
+    elbv2=boto3.client('elbv2',aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'],region_name='us-east-1')
+    ssm = boto3.client('ssm', aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'], region_name='us-east-1')
+    try:
+        # Retrieve Load Balancer ARN from SSM Parameter Store
+        lb_arn_param = ssm.get_parameter(Name='/clixx/LoadBalancerARN')
+        load_balancer_arn = lb_arn_param['Parameter']['Value']
+        print('Retrieved load balancer arn from SSM: %s' % (load_balancer_arn))
+        # Finally, delete the Load Balancer
+        elbv2.delete_load_balancer(LoadBalancerArn=load_balancer_arn)
+        print("Deleted Load Balancer: %s" % (load_balancer_arn))
+    
+    except ClientError as e:
+        print("Error: %s" % (e))
+     
+def delete_db_instance(rds_identifier):
+    sts_client=boto3.client('sts')
+    #Calling the assume_role function
+    assumed_role_object=sts_client.assume_role(RoleArn='arn:aws:iam::054037131148:role/Engineer', RoleSessionName='mysession')
+    credentials=assumed_role_object['Credentials']
+    print(credentials)
+    rds=boto3.client('rds',aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'],region_name='us-east-1')
+    ssm = boto3.client('ssm', aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'], region_name='us-east-1')
+    try:
+        # Retrieve RDS Identifier from SSM Parameter Store
+        rds_identifier_param = ssm.get_parameter(Name='/clixx/db_instance_identifier')
+        rds_identifier = rds_identifier_param['Parameter']['Value']
+        print('Retrieved rds identifier from SSM: %s' % (rds_identifier))
+        # Finally, delete the RDS Instance
+        rds.delete_db_instance(DBInstanceIdentifier=rds_identifier)
+        print("Deleted RDS Instance: %s" % (rds_identifier))
+    
+    except ClientError as e:
+        print("Error: %s" % (e))
+                
 def delete_vpc(vpc_id):
     sts_client=boto3.client('sts')
     #Calling the assume_role function
@@ -22,14 +243,60 @@ def delete_vpc(vpc_id):
         # Finally, delete the VPC
         ec2.delete_vpc(VpcId=vpc_id)
         print('Deleted VPC with ID: %s.' % (vpc_id))
-        # Deleting the parameter from SSM
-        ssm.delete_parameter(Name='/clixx/vpc_id')
-        print('Deleted VPC ID from SSM Parameter Store.')
     
     except ClientError as e:
         print("Error: %s" % (e))
-    
 
+def get_from_ssm(parameter_name):
+    """Retrieve a parameter from AWS SSM Parameter Store."""
+    ssm = boto3.client('ssm', aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'], region_name='us-east-1')
+    try:
+        response = ssm.get_parameter(Name=parameter_name)
+        return response['Parameter']['Value']
+    except ClientError as e:
+        if e.response['Error']['Code'] == 'ParameterNotFound':
+            print(f"SSM Parameter '{parameter_name}' not found, skipping.")
+        else:
+            print(f"Error retrieving parameter {parameter_name} from SSM: {e}")
+        return None
+
+def cleanup_resources(vpc_id, public_subnet_ids, private_subnet_ids, security_group_id, internet_gateway_id, nat_gateway_id, eip_id, pub_route_table_id, priv_route_table_id, tg_arn, load_balancer_arn, rds_identifier):
+    # Delete NAT Gateway
+    delete_nat_gateway(nat_gateway_id)
+    delete_load_balancer(load_balancer_arn)
+    delete_db_instance(rds_identifier)
+    time.sleep(580)
+    release_address(eip_id)
+    # Unmap public IPs before deleting resources
+    for public_subnet_id in public_subnet_ids:
+        unmap_public_ip(public_subnet_id)
+    
+    # Delete public subnets
+    for subnet_id in public_subnet_ids:
+        delete_subnet(subnet_id)
+
+    # Delete private subnets
+    for subnet_id in private_subnet_ids:
+        delete_subnet(subnet_id)    
+        
+    delete_security_group(security_group_id)
+    # Delete Internet Gateway
+    delete_internet_gateway(internet_gateway_id, vpc_id)
+    
+    # Delete Route Tables
+    for route_table_id in pub_route_table_id:
+        delete_route_table(route_table_id)
+        
+    for route_table_id in priv_route_table_id:
+        delete_route_table(route_table_id)
+    
+    delete_target_group(tg_arn)
+    
+    
+    
+    time.sleep(190)
+    delete_vpc(vpc_id)
+    
 if __name__=="__main__":
     sts_client=boto3.client('sts')
     #Calling the assume_role function
@@ -37,13 +304,23 @@ if __name__=="__main__":
     credentials=assumed_role_object['Credentials']
     print(credentials)
 
+    public_subnet_ids = []
+    private_subnet_ids = []
+    security_group_id = None
+    internet_gateway_id = None
+    nat_gateway_id = None
+    eip_id = None
+    pub_route_table_id = []
+    priv_route_table_id = []
+    tg_arn = None
     vpc_id = None
-
+    load_balancer_arn = None
+    rds_identifier = None
     
-
-            
-
+    
+    
+    
     # Proceeding with deleting resources using the IDs gathered
     print("VPC ID:", vpc_id)
     
-    delete_vpc(vpc_id)
+    cleanup_resources(vpc_id, public_subnet_ids, private_subnet_ids, security_group_id, internet_gateway_id, nat_gateway_id, eip_id, pub_route_table_id, priv_route_table_id, tg_arn, load_balancer_arn, rds_identifier)
