@@ -630,8 +630,8 @@ echo "Database is available!"
 #else
 echo "DNS Address not found in the table, updating..."
 mysql -uwordpressuser -pW3lcome123 -h stack-clixx-db.czuum48cat54.us-east-1.rds.amazonaws.com -D wordpressdb<<EOF
-UPDATE wp_options SET option_value="${{DNS}}" WHERE option_value LIKE "CliXX-APP-NLB%";     
-EOF    
+UPDATE wp_options SET option_value="${{DNS}}" WHERE option_value LIKE "CliXX-APP-NLB%";
+EOF
 #fi
 # Grant file ownership and restart Apache
 sudo chown -R apache:apache /var/www
