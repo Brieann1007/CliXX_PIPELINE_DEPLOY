@@ -669,7 +669,7 @@ sudo /sbin/sysctl -w net.ipv4.tcp_keepalive_time=200 net.ipv4.tcp_keepalive_intv
         },
         MinSize=2,
         MaxSize=3,
-        DesiredCapacity=1,
+        DesiredCapacity=2,
         AvailabilityZones=
         availability_zones,
         TargetGroupARNs=[
