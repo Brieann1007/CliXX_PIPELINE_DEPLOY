@@ -5,7 +5,7 @@ import os
 import time
 from botocore.exceptions import ClientError
 
-def delete_efs_and_mounts(file_system_id):
+def delete_efs_and_mounts(mount_target_id, file_system_id):
     """Delete an EFS file system and all associated mount targets."""
     sts_client = boto3.client('sts')
     # Assume role for credentials
