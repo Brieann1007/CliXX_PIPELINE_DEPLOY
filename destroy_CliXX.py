@@ -20,37 +20,54 @@ def delete_efs_and_mounts(mount_target_id, file_system_id):
     efs = boto3.client('efs',aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'],region_name='us-east-1')
     ssm = boto3.client('ssm', aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'], region_name='us-east-1')
     try:
-        # Retrieve subnet IDs from SSM Parameter Store
+        # Retrieve mount target IDs from SSM Parameter Store
         mt_ids_param = ssm.get_parameter(Name='/clixx/mounttargetids')
+        mount_target_ids = mt_ids_param['Parameter']['Value'].split(',')
+        print('Retrieved Mount Target IDs:', mount_target_ids)
 
-        mount_target_id = mt_ids_param['Parameter']['Value'].split(',')
-        print('Retrieved Mount Target IDs: %s' % (mount_target_id))
-
-        efs.delete_mount_target(MountTargetId=mount_target_id)
-        # Wait for the mount target to be deleted
-        while True:
+        # Delete each mount target individually
+        for mount_target_id in mount_target_ids:
             try:
-                efs.describe_mount_targets(MountTargetId=mount_target_id)
-                print(f"Waiting for mount target {mount_target_id} to be deleted...")
-                time.sleep(5)
+                efs.delete_mount_target(MountTargetId=mount_target_id)
+                print(f"Deletion initiated for mount target {mount_target_id}")
+
+                # Wait for the mount target to be deleted
+                while True:
+                    try:
+                        efs.describe_mount_targets(MountTargetId=mount_target_id)
+                        print(f"Waiting for mount target {mount_target_id} to be deleted...")
+                        time.sleep(5)
+                    except ClientError as e:
+                        if e.response['Error']['Code'] == 'MountTargetNotFound':
+                            print(f"Mount target {mount_target_id} deleted.")
+                            break
+                        else:
+                            print(f"Error while waiting for mount target deletion: {e}")
+                            time.sleep(5)
             except ClientError as e:
-                if e.response['Error']['Code'] == 'MountTargetNotFound':
-                    print(f"Mount target {mount_target_id} deleted.")
-                    break
-                else:
-                    print(f"Error while waiting for mount target deletion: {e}")
-                    time.sleep(5)
+                print(f"Error deleting mount target {mount_target_id}: {e}")
+
     except ClientError as e:
-        print(f"Error describing mount targets for file system {file_system_id}: {e}")
+        print(f"Error retrieving mount targets from SSM for file system {file_system_id}: {e}")
 
     # Delete the EFS file system
     try:
-        # Delete Nat Gateway ID from SSM Parameter Store
-        efs_id_param = ssm.get_parameter(Name='/clixx/efs')
-        file_system_id = efs_id_param['Parameter']['Value']
-        print('Retrieved efs file ID from SSM: %s' % (file_system_id))
         efs.delete_file_system(FileSystemId=file_system_id)
-        print(f"EFS File System {file_system_id} deleted.")
+        print(f"EFS File System {file_system_id} deletion initiated.")
+        
+        # Wait for the file system to be deleted
+        while True:
+            try:
+                efs.describe_file_systems(FileSystemId=file_system_id)
+                print("Waiting for EFS File System to be fully deleted...")
+                time.sleep(10)
+            except ClientError as e:
+                if e.response['Error']['Code'] == 'FileSystemNotFound':
+                    print(f"EFS File System {file_system_id} deleted.")
+                    break
+                else:
+                    print(f"Error while waiting for EFS file system deletion: {e}")
+                    time.sleep(10)
     except ClientError as e:
         print(f"Error deleting EFS file system {file_system_id}: {e}")
 
