@@ -349,7 +349,7 @@ def cleanup_resources(
     load_balancer_arn, rds_identifier
 ):
     # Delete NAT Gateway and associated resources
-    delete_efs_and_mounts(mount_target_id)
+    delete_efs_and_mounts(mount_target_id, file_system_id)
     delete_nat_gateway(nat_gateway_id)
     delete_load_balancer(load_balancer_arn)
     delete_db_instance(rds_identifier)
