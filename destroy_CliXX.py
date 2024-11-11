@@ -20,10 +20,14 @@ def delete_efs_and_mounts(mount_target_id, file_system_id):
     efs = boto3.client('efs',aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'],region_name='us-east-1')
     ssm = boto3.client('ssm', aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'], region_name='us-east-1')
     try:
-        # Retrieve mount target IDs from SSM Parameter Store
+        # Retrieve file system ID and mount target IDs from SSM
+        fs_id_param = ssm.get_parameter(Name='/clixx/efs')
+        file_system_id = fs_id_param['Parameter']['Value']
+        print(f"Retrieved EFS File System ID from SSM: {file_system_id}")
+        
         mt_ids_param = ssm.get_parameter(Name='/clixx/mounttargetids')
         mount_target_ids = mt_ids_param['Parameter']['Value'].split(',')
-        print('Retrieved Mount Target IDs:', mount_target_ids)
+        print("Retrieved Mount Target IDs:", mount_target_ids)
 
         # Delete each mount target individually
         for mount_target_id in mount_target_ids:
@@ -47,11 +51,7 @@ def delete_efs_and_mounts(mount_target_id, file_system_id):
             except ClientError as e:
                 print(f"Error deleting mount target {mount_target_id}: {e}")
 
-    except ClientError as e:
-        print(f"Error retrieving mount targets from SSM for file system {file_system_id}: {e}")
-
-    # Delete the EFS file system
-    try:
+        # Delete the EFS file system after all mount targets are deleted
         efs.delete_file_system(FileSystemId=file_system_id)
         print(f"EFS File System {file_system_id} deletion initiated.")
         
@@ -69,7 +69,7 @@ def delete_efs_and_mounts(mount_target_id, file_system_id):
                     print(f"Error while waiting for EFS file system deletion: {e}")
                     time.sleep(10)
     except ClientError as e:
-        print(f"Error deleting EFS file system {file_system_id}: {e}")
+        print(f"Error retrieving mount targets or deleting EFS file system: {e}")
 
 def delete_nat_gateway(nat_gateway_id):
     sts_client=boto3.client('sts')
@@ -342,42 +342,37 @@ def get_from_ssm(parameter_name):
             print(f"Error retrieving parameter {parameter_name} from SSM: {e}")
         return None
 
-def cleanup_resources(vpc_id, public_subnet_ids, private_subnet_ids, security_group_id, mount_target_id, file_system_id, internet_gateway_id, nat_gateway_id, eip_id, pub_route_table_id, priv_route_table_id, tg_arn, load_balancer_arn, rds_identifier):
-    # Delete NAT Gateway
-    delete_efs_and_mounts(mount_target_id, file_system_id)
+def cleanup_resources(
+    vpc_id, public_subnet_ids, private_subnet_ids, security_group_id, 
+    mount_target_id, file_system_id, internet_gateway_id, nat_gateway_id, 
+    eip_id, pub_route_table_ids, priv_route_table_ids, tg_arn, 
+    load_balancer_arn, rds_identifier
+):
+    # Delete NAT Gateway and associated resources
+    delete_efs_and_mounts(mount_target_id)
     delete_nat_gateway(nat_gateway_id)
     delete_load_balancer(load_balancer_arn)
     delete_db_instance(rds_identifier)
     release_address(eip_id)
-    # Unmap public IPs before deleting resources
+
+    # Unmap public IPs and delete subnets
     for public_subnet_id in public_subnet_ids:
         unmap_public_ip(public_subnet_id)
-    
-    # Delete public subnets
-    for subnet_id in public_subnet_ids:
+    for subnet_id in public_subnet_ids + private_subnet_ids:
         delete_subnet(subnet_id)
 
-    # Delete private subnets
-    for subnet_id in private_subnet_ids:
-        delete_subnet(subnet_id)    
-        
+    # Delete security groups and internet gateway
     delete_security_group(security_group_id)
-    
-    # Delete Internet Gateway
     delete_internet_gateway(internet_gateway_id, vpc_id)
-    
-    # Delete Route Tables
-    for route_table_id in pub_route_table_id:
-        delete_route_table(route_table_id)
-        
-    for route_table_id in priv_route_table_id:
+
+    # Delete route tables
+    for route_table_id in pub_route_table_ids + priv_route_table_ids:
         delete_route_table(route_table_id)
     
     delete_target_group(tg_arn)
-    
-    
-    
-    time.sleep(190)
+
+    # Wait before deleting VPC to ensure all dependencies are removed
+    time.sleep(120)
     delete_vpc(vpc_id)
     
 if __name__=="__main__":
@@ -387,6 +382,7 @@ if __name__=="__main__":
     credentials=assumed_role_object['Credentials']
     print(credentials)
 
+    # Define IDs for the resources to delete (replace these with actual retrieval from SSM)
     public_subnet_ids = []
     private_subnet_ids = []
     security_group_id = None
@@ -395,27 +391,33 @@ if __name__=="__main__":
     internet_gateway_id = None
     nat_gateway_id = None
     eip_id = None
-    pub_route_table_id = []
-    priv_route_table_id = []
+    pub_route_table_ids = []
+    priv_route_table_ids = []
     tg_arn = None
     vpc_id = None
     load_balancer_arn = None
     rds_identifier = None
-    
-# Proceeding with deleting resources using the IDs gathered
+
+    # Print resource IDs and proceed with deletion
+    print("Deleting resources with the following IDs:")
     print("VPC ID:", vpc_id)
     print("Public Subnet IDs:", public_subnet_ids)
     print("Private Subnet IDs:", private_subnet_ids)
     print("Security Group ID:", security_group_id)
-    print("Mount Target ID:", mount_target_id)
+    print("Mount Target IDs:", mount_target_id)
     print("File System ID:", file_system_id)
     print("Internet Gateway ID:", internet_gateway_id)
     print("NAT Gateway ID:", nat_gateway_id)
     print("Elastic IP ID:", eip_id)
-    print("Public Route Table IDs:", pub_route_table_id)
-    print("Private Route Table IDs:", priv_route_table_id)
+    print("Public Route Table IDs:", pub_route_table_ids)
+    print("Private Route Table IDs:", priv_route_table_ids)
     print("Target Group ARN:", tg_arn)
     print("Load Balancer ARN:", load_balancer_arn)
     print("RDS Identifier:", rds_identifier)
     
-    cleanup_resources(vpc_id, public_subnet_ids, private_subnet_ids, security_group_id, mount_target_id, file_system_id, internet_gateway_id, nat_gateway_id, eip_id, pub_route_table_id, priv_route_table_id, tg_arn, load_balancer_arn, rds_identifier)
+    cleanup_resources(
+        vpc_id, public_subnet_ids, private_subnet_ids, security_group_id,
+        mount_target_id, file_system_id, internet_gateway_id, nat_gateway_id,
+        eip_id, pub_route_table_ids, priv_route_table_ids, tg_arn,
+        load_balancer_arn, rds_identifier
+    )
