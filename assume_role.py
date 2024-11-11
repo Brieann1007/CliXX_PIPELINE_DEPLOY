@@ -640,8 +640,8 @@ find /var/www -type d -exec sudo chmod 2775 {{}} \;
 find /var/www -type f -exec sudo chmod 0664 {{}} \;
 sudo systemctl restart httpd
 sudo service httpd restart
-##Enable httpd 
-sudo systemctl enable httpd 
+##Enable httpd
+sudo systemctl enable httpd
 sudo /sbin/sysctl -w net.ipv4.tcp_keepalive_time=200 net.ipv4.tcp_keepalive_intvl=200 net.ipv4.tcp_keepalive_probes=5
 """
     user_data_base64code = base64.b64encode(user_data_script.encode('utf-8')).decode('utf-8')
@@ -667,7 +667,7 @@ sudo /sbin/sysctl -w net.ipv4.tcp_keepalive_time=200 net.ipv4.tcp_keepalive_intv
             'LaunchTemplateName': launch_template_response['LaunchTemplate']['LaunchTemplateName'],
             'Version': '$Latest'
         },
-        MinSize=1,
+        MinSize=2,
         MaxSize=3,
         DesiredCapacity=1,
         AvailabilityZones=

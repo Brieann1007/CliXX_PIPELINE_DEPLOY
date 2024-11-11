@@ -5,6 +5,55 @@ import os
 import time
 from botocore.exceptions import ClientError
 
+def delete_efs_and_mounts(file_system_id):
+    """Delete an EFS file system and all associated mount targets."""
+    sts_client = boto3.client('sts')
+    # Assume role for credentials
+    assumed_role_object = sts_client.assume_role(
+        RoleArn='arn:aws:iam::054037131148:role/Engineer',
+        RoleSessionName='mysession'
+    )
+    credentials = assumed_role_object['Credentials']
+    print(credentials)
+    
+    # Initialize the EFS client with assumed credentials
+    efs = boto3.client('efs',aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'],region_name='us-east-1')
+    ssm = boto3.client('ssm', aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'], region_name='us-east-1')
+    try:
+        # Retrieve subnet IDs from SSM Parameter Store
+        mt_ids_param = ssm.get_parameter(Name='/clixx/mounttargetids')
+
+        mount_target_id = mt_ids_param['Parameter']['Value'].split(',')
+        print('Retrieved Mount Target IDs: %s' % (mount_target_id))
+
+        efs.delete_mount_target(MountTargetId=mount_target_id)
+        # Wait for the mount target to be deleted
+        while True:
+            try:
+                efs.describe_mount_targets(MountTargetId=mount_target_id)
+                print(f"Waiting for mount target {mount_target_id} to be deleted...")
+                time.sleep(5)
+            except ClientError as e:
+                if e.response['Error']['Code'] == 'MountTargetNotFound':
+                    print(f"Mount target {mount_target_id} deleted.")
+                    break
+                else:
+                    print(f"Error while waiting for mount target deletion: {e}")
+                    time.sleep(5)
+    except ClientError as e:
+        print(f"Error describing mount targets for file system {file_system_id}: {e}")
+
+    # Delete the EFS file system
+    try:
+        # Delete Nat Gateway ID from SSM Parameter Store
+        efs_id_param = ssm.get_parameter(Name='/clixx/efs')
+        file_system_id = efs_id_param['Parameter']['Value']
+        print('Retrieved efs file ID from SSM: %s' % (file_system_id))
+        efs.delete_file_system(FileSystemId=file_system_id)
+        print(f"EFS File System {file_system_id} deleted.")
+    except ClientError as e:
+        print(f"Error deleting EFS file system {file_system_id}: {e}")
+
 def delete_nat_gateway(nat_gateway_id):
     sts_client=boto3.client('sts')
     #Calling the assume_role function
@@ -219,13 +268,29 @@ def delete_db_instance(rds_identifier):
         # Retrieve RDS Identifier from SSM Parameter Store
         rds_identifier_param = ssm.get_parameter(Name='/clixx/db_instance_identifier')
         rds_identifier = rds_identifier_param['Parameter']['Value']
-        print('Retrieved rds identifier from SSM: %s' % (rds_identifier))
-        # Finally, delete the RDS Instance
-        rds.delete_db_instance(DBInstanceIdentifier=rds_identifier)
-        print("Deleted RDS Instance: %s" % (rds_identifier))
+        print('Retrieved RDS identifier from SSM:', rds_identifier)
+        
+        # Delete the RDS instance
+        rds.delete_db_instance(DBInstanceIdentifier=rds_identifier, SkipFinalSnapshot=True)
+        print("Deletion initiated for RDS instance:", rds_identifier)
+
+        # Wait for the RDS instance to be deleted
+        print("Waiting for RDS instance to be fully deleted...")
+        while True:
+            try:
+                rds.describe_db_instances(DBInstanceIdentifier=rds_identifier)
+                print("RDS instance is still being deleted...")
+                time.sleep(10)  # Check every 10 seconds
+            except ClientError as e:
+                if e.response['Error']['Code'] == 'DBInstanceNotFound':
+                    print("Deleted RDS Instance:", rds_identifier)
+                    break
+                else:
+                    print("Error while waiting for RDS deletion:", e)
+                    time.sleep(10)
     
     except ClientError as e:
-        print("Error: %s" % (e))
+        print("Error:", e)
                 
 def delete_vpc(vpc_id):
     sts_client=boto3.client('sts')
@@ -260,12 +325,12 @@ def get_from_ssm(parameter_name):
             print(f"Error retrieving parameter {parameter_name} from SSM: {e}")
         return None
 
-def cleanup_resources(vpc_id, public_subnet_ids, private_subnet_ids, security_group_id, internet_gateway_id, nat_gateway_id, eip_id, pub_route_table_id, priv_route_table_id, tg_arn, load_balancer_arn, rds_identifier):
+def cleanup_resources(vpc_id, public_subnet_ids, private_subnet_ids, security_group_id, mount_target_id, file_system_id, internet_gateway_id, nat_gateway_id, eip_id, pub_route_table_id, priv_route_table_id, tg_arn, load_balancer_arn, rds_identifier):
     # Delete NAT Gateway
+    delete_efs_and_mounts(mount_target_id, file_system_id)
     delete_nat_gateway(nat_gateway_id)
     delete_load_balancer(load_balancer_arn)
     delete_db_instance(rds_identifier)
-    time.sleep(580)
     release_address(eip_id)
     # Unmap public IPs before deleting resources
     for public_subnet_id in public_subnet_ids:
@@ -280,6 +345,7 @@ def cleanup_resources(vpc_id, public_subnet_ids, private_subnet_ids, security_gr
         delete_subnet(subnet_id)    
         
     delete_security_group(security_group_id)
+    
     # Delete Internet Gateway
     delete_internet_gateway(internet_gateway_id, vpc_id)
     
@@ -307,6 +373,8 @@ if __name__=="__main__":
     public_subnet_ids = []
     private_subnet_ids = []
     security_group_id = None
+    mount_target_id = []
+    file_system_id = None
     internet_gateway_id = None
     nat_gateway_id = None
     eip_id = None
@@ -317,10 +385,20 @@ if __name__=="__main__":
     load_balancer_arn = None
     rds_identifier = None
     
-    
-    
-    
-    # Proceeding with deleting resources using the IDs gathered
+# Proceeding with deleting resources using the IDs gathered
     print("VPC ID:", vpc_id)
+    print("Public Subnet IDs:", public_subnet_ids)
+    print("Private Subnet IDs:", private_subnet_ids)
+    print("Security Group ID:", security_group_id)
+    print("Mount Target ID:", mount_target_id)
+    print("File System ID:", file_system_id)
+    print("Internet Gateway ID:", internet_gateway_id)
+    print("NAT Gateway ID:", nat_gateway_id)
+    print("Elastic IP ID:", eip_id)
+    print("Public Route Table IDs:", pub_route_table_id)
+    print("Private Route Table IDs:", priv_route_table_id)
+    print("Target Group ARN:", tg_arn)
+    print("Load Balancer ARN:", load_balancer_arn)
+    print("RDS Identifier:", rds_identifier)
     
-    cleanup_resources(vpc_id, public_subnet_ids, private_subnet_ids, security_group_id, internet_gateway_id, nat_gateway_id, eip_id, pub_route_table_id, priv_route_table_id, tg_arn, load_balancer_arn, rds_identifier)
+    cleanup_resources(vpc_id, public_subnet_ids, private_subnet_ids, security_group_id, mount_target_id, file_system_id, internet_gateway_id, nat_gateway_id, eip_id, pub_route_table_id, priv_route_table_id, tg_arn, load_balancer_arn, rds_identifier)
