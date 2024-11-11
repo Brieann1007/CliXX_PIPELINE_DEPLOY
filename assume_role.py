@@ -623,16 +623,16 @@ while ! mysqladmin ping -h "${{DB_ADDRESS}}" --silent; do
 done
 echo "Database is available!"
 # Verify and update DNS in the database
-#output_variable=$(mysql -uwordpressuser -pW3lcome123 -h ${{DB_ADDRESS}} -D wordpressdb -sse "SELECT option_value FROM wp_options WHERE option_value LIKE 'CliXX-APP-NLB%';")
-#if [ $output_variable == ${{DNS}} ]
-#then
-    #echo "DNS Address found in the table"
-#else
+output_variable=$(mysql -uwordpressuser -pW3lcome123 -h ${{DB_ADDRESS}} -D wordpressdb -sse "SELECT option_value FROM wp_options WHERE option_value LIKE 'CliXX-APP-NLB%';")
+if [ $output_variable == ${{DNS}} ]
+then
+    echo "DNS Address found in the table"
+else
 echo "DNS Address not found in the table, updating..."
 mysql -uwordpressuser -pW3lcome123 -h stack-clixx-db.czuum48cat54.us-east-1.rds.amazonaws.com -D wordpressdb<<EOF
 UPDATE wp_options SET option_value="${{DNS}}" WHERE option_value LIKE "CliXX-APP-NLB%";
 EOF
-#fi
+fi
 # Grant file ownership and restart Apache
 sudo chown -R apache:apache /var/www
 sudo chmod 2775 /var/www
