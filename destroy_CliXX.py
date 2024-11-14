@@ -144,7 +144,11 @@ def delete_internet_gateway(ig_id, vpc_id):
         # Retrieve Internet Gateway ID from SSM Parameter Store
         igw_id_param = ssm.get_parameter(Name='/clixx/internetgateway_id')
         ig_id = igw_id_param['Parameter']['Value']
-        print('Retrieved internet gateway ID from SSM: %s' % (ig_id))
+        print('Retrieved internet gateway ID from SSM: %s' % (ig_id))\
+        # Retrieve VPC ID from SSM Parameter Store
+        vpc_id_param = ssm.get_parameter(Name='/clixx/vpc_id')
+        vpc_id = vpc_id_param['Parameter']['Value']
+        print('Retrieved VPC ID from SSM: %s' % (vpc_id))
         # Finally, delete the Internet Gateway
         ec2.detach_internet_gateway(InternetGatewayId=ig_id, VpcId=vpc_id)
         ec2.delete_internet_gateway(InternetGatewayId=ig_id)
