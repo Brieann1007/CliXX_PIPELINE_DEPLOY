@@ -517,6 +517,16 @@ def create_rds_instance(private_subnets, security_group_id):
     )
 
     print("DB Subnet Group created: %s" % (db_subnet_group_response['DBSubnetGroup']['DBSubnetGroupName']))
+    
+    db_subnet_group_name = db_subnet_group_response['DBSubnetGroup']['DBSubnetGroupName']
+    print("DB Subnet Group created: %s" % db_subnet_group_name)
+    
+    # Save DB Subnet Group Name to SSM Parameter Store
+    try:
+        ssm.put_parameter(Name='/clixx/db_subnet_group_name',Value=db_subnet_group_name,Type='String',Overwrite=True)
+        print("DB Subnet Group Name saved to SSM Parameter Store.")
+    except ClientError as e:
+        print("Error saving DB Subnet Group Name to SSM: %s" % e)
 
     rds_instance_response = rds.restore_db_instance_from_db_snapshot(
         DBInstanceIdentifier='stack-clixx-db',
