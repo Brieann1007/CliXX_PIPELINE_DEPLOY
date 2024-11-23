@@ -374,6 +374,45 @@ def delete_auto_scaling_group(asg_name):
     
     except ClientError as e:
         print(f"An error occurred: {e}")
+
+def delete_route53_record(hosted_zone_id, record_name):
+    sts_client=boto3.client('sts')
+    #Calling the assume_role function
+    assumed_role_object=sts_client.assume_role(RoleArn='arn:aws:iam::054037131148:role/Engineer', RoleSessionName='mysession')
+    credentials=assumed_role_object['Credentials']
+    print(credentials)
+    # Initialize the Route 53 client
+    route53_client = boto3.client('route53',aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'],region_name='us-east-1')
+    # Define the change batch request to delete the specified record
+    change_batch = {
+        'Changes': [
+            {
+                'Action': 'DELETE',
+                'ResourceRecordSet': {
+                    'Name': record_name,
+                    'Type': 'A',
+                    # Specify the TTL and ResourceRecords as they exist
+                    'TTL': 300,  # Replace with the actual TTL of the record
+                    'ResourceRecords': [
+                        {'Value': '192.0.2.1'},  # Replace with the actual value(s) of the record
+                    ],
+                }
+            },
+        ]
+    }
+    ssm = boto3.client('ssm', aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'], region_name='us-east-1')
+    try:
+        # Retrieve VPC ID from SSM Parameter Store
+        hosted_zone_id_param = ssm.get_parameter(Name='/clixx/hostedzoneid')
+        hosted_zone_id = hosted_zone_id_param['Parameter']['Value']
+        print('Retrieved Hosted Zone ID from SSM: %s' % (hosted_zone_id))
+        # Submit the change batch request
+        route53_client.change_resource_record_sets(
+        HostedZoneId=hosted_zone_id,
+        ChangeBatch=change_batch
+        )
+    except ClientError as e:
+        print("Error: %s" % (e))
                         
 def delete_vpc(vpc_id):
     sts_client=boto3.client('sts')
@@ -412,7 +451,7 @@ def cleanup_resources(
     vpc_id, public_subnet_ids, private_subnet_ids, security_group_id, 
     mount_target_id, file_system_id, internet_gateway_id, nat_gateway_id, 
     eip_id, pub_route_table_ids, priv_route_table_ids, tg_arn, 
-    load_balancer_arn, rds_identifier, db_subnet_group_name, asg_name, lt_id
+    load_balancer_arn, rds_identifier, db_subnet_group_name, asg_name, lt_id, hosted_zone_id, record_name
 ):
     # Delete NAT Gateway and associated resources
     delete_efs_and_mounts(mount_target_id, file_system_id)
@@ -432,7 +471,7 @@ def cleanup_resources(
     # Delete security groups and internet gateway
     delete_security_group(security_group_id)
     delete_internet_gateway(internet_gateway_id, vpc_id)
-
+    delete_route53_record(hosted_zone_id, record_name)
     # Delete route tables
     for route_table_id in pub_route_table_ids + priv_route_table_ids:
         delete_route_table(route_table_id)
@@ -468,6 +507,8 @@ if __name__=="__main__":
     db_subnet_group_name = None
     asg_name = None
     lt_id = None
+    hosted_zone_id = None
+    record_name = None
 
     # Print resource IDs and proceed with deletion
     print("Deleting resources with the following IDs:")
@@ -488,10 +529,12 @@ if __name__=="__main__":
     print("DB Subnet Group Name:", db_subnet_group_name)
     print("Autoscaling Group Name:", asg_name)
     print("Launch Template Name:", lt_id)
+    print("Hosted Zone ID:", hosted_zone_id)
+    print("Route 53 Record Name:", record_name)
     
     cleanup_resources(
         vpc_id, public_subnet_ids, private_subnet_ids, security_group_id,
         mount_target_id, file_system_id, internet_gateway_id, nat_gateway_id,
         eip_id, pub_route_table_ids, priv_route_table_ids, tg_arn,
-        load_balancer_arn, rds_identifier, db_subnet_group_name, asg_name, lt_id
+        load_balancer_arn, rds_identifier, db_subnet_group_name, asg_name, lt_id, hosted_zone_id, record_name
     )

@@ -674,7 +674,7 @@ sudo /sbin/sysctl -w net.ipv4.tcp_keepalive_time=200 net.ipv4.tcp_keepalive_intv
             'UserData': user_data_base64code
                 }
             )
-    lt_id = launch_template_response['LaunchTemplates'][0]['LaunchTemplateId']
+    lt_id = launch_template_response['LaunchTemplate'][0]['LaunchTemplateId']
     # Save Launch Template Name to SSM Parameter Store
     try:
         ssm.put_parameter(Name='/clixx/LaunchTemplateID',Value=lt_id,Type='String',Overwrite=True)
@@ -770,6 +770,12 @@ def create_route53_record():
             ssm.put_parameter(
                 Name='/clixx/record_name',
                 Value=record_name,
+                Type='String',
+                Overwrite=True
+            )
+            ssm.put_parameter(
+                Name='/clixx/hostedzoneid',
+                Value=hosted_zone_id,
                 Type='String',
                 Overwrite=True
             )
