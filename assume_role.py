@@ -684,7 +684,7 @@ sudo /sbin/sysctl -w net.ipv4.tcp_keepalive_time=200 net.ipv4.tcp_keepalive_intv
         return lt_id
     else:
         print("Launch Template Name not found.")
-     
+    autoscaling=boto3.client('autoscaling',aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'],region_name='us-east-1') 
     autoscaling.create_auto_scaling_group(
         AutoScalingGroupName='stack-clixx-boto-asg',
         LaunchTemplate={
