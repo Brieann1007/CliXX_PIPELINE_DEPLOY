@@ -577,6 +577,10 @@ def create_autoscaling_group(security_group_id, tg_arn, public_subnets):
     lb_dns_param = ssm.get_parameter(Name='/clixx/LoadbalancerDNS')
     load_balancer_dns = lb_dns_param['Parameter']['Value']
     print('Retrieved Load Balancer DNS from SSM: %s' % (load_balancer_dns))
+    # Retrieve Route 53 record name from SSM Parameter Store
+    record_name_param = ssm.get_parameter(Name='/clixx/record_name')
+    record_name = record_name_param['Parameter']['Value']
+    print('Retrieved Route 53 record name from SSM: %s' % (record_name))
     # Retrieve EFS ID from SSM Parameter Store
     efs_sys_param = ssm.get_parameter(Name='/clixx/efs')
     file_system_id = efs_sys_param['Parameter']['Value']
@@ -588,7 +592,7 @@ def create_autoscaling_group(security_group_id, tg_arn, public_subnets):
     autoscaling=boto3.client('autoscaling',aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'],region_name='us-east-1')
     user_data_script = f"""#!/bin/bash -xe
 # Variables
-DNS='{load_balancer_dns}'
+DNS='{record_name}'
 FILE_SYSTEM_ID='{file_system_id}'
 DB_ADDRESS='{rds_endpoint_address}'
 # Update packages and install needed tools
@@ -632,13 +636,13 @@ while ! mysqladmin ping -h "${{DB_ADDRESS}}" --silent; do
     sleep 10
 done
 echo "Database is available!"
-# Verify and update DNS in the database
+# Verify and update Route 53 in the database
 output_variable=$(mysql -uwordpressuser -pW3lcome123 -h ${{DB_ADDRESS}} -D wordpressdb -sse "SELECT option_value FROM wp_options WHERE option_value LIKE 'CliXX-APP-NLB%';")
 if [ $output_variable == ${{DNS}} ]
 then
-    echo "DNS Address found in the table"
+    echo "Route 53 Address found in the table"
 else
-echo "DNS Address not found in the table, updating..."
+echo "Route 53 Address not found in the table, updating..."
 mysql -uwordpressuser -pW3lcome123 -h stack-clixx-db.czuum48cat54.us-east-1.rds.amazonaws.com -D wordpressdb<<EOF
 UPDATE wp_options SET option_value="${{DNS}}" WHERE option_value LIKE "CliXX-APP-NLB%";
 EOF
@@ -797,6 +801,6 @@ if __name__=="__main__":
     mount_target_ids = create_efs_mount_target(file_system_id, public_subnets, security_group_id)
     tg_arn = create_target_group(vpc_id)
     load_balancer_arn, load_balancer_dns= create_load_balancer(security_group_id,tg_arn, public_subnets)
+    record_name = create_route53_record()
     rds_identifier, rds_endpoint_address = create_rds_instance(private_subnets, security_group_id)
     asg_name = create_autoscaling_group(security_group_id, tg_arn, public_subnets)
-    record_name = create_route53_record()
