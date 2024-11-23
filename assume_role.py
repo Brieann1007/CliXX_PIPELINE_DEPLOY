@@ -674,16 +674,14 @@ sudo /sbin/sysctl -w net.ipv4.tcp_keepalive_time=200 net.ipv4.tcp_keepalive_intv
             'UserData': user_data_base64code
                 }
             )
-    response = ec2_client.describe_launch_templates(
-        LaunchTemplateNames=['stack-clixx-launch-template']
-    )
-    if response['LaunchTemplates']:
-        lt_id = response['LaunchTemplates'][0]['LaunchTemplateId']
-        print("Launch Template ID:", lt_id)
-        save_to_ssm('/clixx/LaunchTemplateID', lt_id)
-        return lt_id
-    else:
-        print("Launch Template Name not found.")
+    lt_id = launch_template_response['LaunchTemplates'][0]['LaunchTemplateId']
+    # Save Launch Template Name to SSM Parameter Store
+    try:
+        ssm.put_parameter(Name='/clixx/LaunchTemplateID',Value=lt_id,Type='String',Overwrite=True)
+        print("Launch Template Name saved to SSM Parameter Store.")
+    except ClientError as e:
+        print("Error saving DB Subnet Group Name to SSM: %s" % e)
+        
     autoscaling=boto3.client('autoscaling',aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'],region_name='us-east-1') 
     autoscaling.create_auto_scaling_group(
         AutoScalingGroupName='stack-clixx-boto-asg',
