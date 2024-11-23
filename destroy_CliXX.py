@@ -422,6 +422,7 @@ def cleanup_resources(
     release_address(eip_id)
     delete_launch_template(lt_id)
     delete_auto_scaling_group(asg_name)
+    time.sleep(120)
     # Unmap public IPs and delete subnets
     for public_subnet_id in public_subnet_ids:
         unmap_public_ip(public_subnet_id)
@@ -439,7 +440,7 @@ def cleanup_resources(
     delete_target_group(tg_arn)
 
     # Wait before deleting VPC to ensure all dependencies are removed
-    time.sleep(120)
+
     delete_vpc(vpc_id)
     
 if __name__=="__main__":
