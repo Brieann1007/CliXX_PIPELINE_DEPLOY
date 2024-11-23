@@ -277,7 +277,7 @@ def delete_load_balancer(load_balancer_arn):
     except ClientError as e:
         print("Error: %s" % (e))
      
-def delete_db_instance(rds_identifier):
+def delete_db_instance(rds_identifier,db_subnet_group_name):
     sts_client=boto3.client('sts')
     #Calling the assume_role function
     assumed_role_object=sts_client.assume_role(RoleArn='arn:aws:iam::054037131148:role/Engineer', RoleSessionName='mysession')
@@ -301,7 +301,7 @@ def delete_db_instance(rds_identifier):
             try:
                 rds.describe_db_instances(DBInstanceIdentifier=rds_identifier)
                 print("RDS instance is still being deleted...")
-                time.sleep(10)  # Check every 10 seconds
+                time.sleep(10)
             except ClientError as e:
                 if e.response['Error']['Code'] == 'DBInstanceNotFound':
                     print("Deleted RDS Instance:", rds_identifier)
@@ -309,7 +309,16 @@ def delete_db_instance(rds_identifier):
                 else:
                     print("Error while waiting for RDS deletion:", e)
                     time.sleep(10)
-    
+        # Retrieve db_subnet_group_name from SSM Parameter Store
+        db_subnet_group_param = ssm.get_parameter(Name='/clixx/db_subnet_group_name')
+        db_subnet_group_name = db_subnet_group_param['Parameter']['Value']
+        print(f"Retrieved DB Subnet Group Name from SSM: {db_subnet_group_name}")
+
+        # Delete the DB Subnet Group
+        print(f"Deleting DB Subnet Group: {db_subnet_group_name}")
+        rds.delete_db_subnet_group(DBSubnetGroupName=db_subnet_group_name)
+        print(f"DB Subnet Group {db_subnet_group_name} successfully deleted.")
+        
     except ClientError as e:
         print("Error:", e)
                 
@@ -350,13 +359,13 @@ def cleanup_resources(
     vpc_id, public_subnet_ids, private_subnet_ids, security_group_id, 
     mount_target_id, file_system_id, internet_gateway_id, nat_gateway_id, 
     eip_id, pub_route_table_ids, priv_route_table_ids, tg_arn, 
-    load_balancer_arn, rds_identifier
+    load_balancer_arn, rds_identifier, db_subnet_group_name
 ):
     # Delete NAT Gateway and associated resources
     delete_efs_and_mounts(mount_target_id, file_system_id)
     delete_nat_gateway(nat_gateway_id)
     delete_load_balancer(load_balancer_arn)
-    delete_db_instance(rds_identifier)
+    delete_db_instance(rds_identifier, db_subnet_group_name)
     release_address(eip_id)
 
     # Unmap public IPs and delete subnets
@@ -401,6 +410,7 @@ if __name__=="__main__":
     vpc_id = None
     load_balancer_arn = None
     rds_identifier = None
+    db_subnet_group_name = None
 
     # Print resource IDs and proceed with deletion
     print("Deleting resources with the following IDs:")
@@ -418,10 +428,11 @@ if __name__=="__main__":
     print("Target Group ARN:", tg_arn)
     print("Load Balancer ARN:", load_balancer_arn)
     print("RDS Identifier:", rds_identifier)
+    print("DB Subnet Group Name:", db_subnet_group_name)
     
     cleanup_resources(
         vpc_id, public_subnet_ids, private_subnet_ids, security_group_id,
         mount_target_id, file_system_id, internet_gateway_id, nat_gateway_id,
         eip_id, pub_route_table_ids, priv_route_table_ids, tg_arn,
-        load_balancer_arn, rds_identifier
+        load_balancer_arn, rds_identifier, db_subnet_group_name
     )
