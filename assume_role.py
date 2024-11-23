@@ -700,6 +700,76 @@ sudo /sbin/sysctl -w net.ipv4.tcp_keepalive_time=200 net.ipv4.tcp_keepalive_intv
         print("AutoScaling Group not found.")
         return None
     
+def create_route53_record():
+    try:
+        # Assume the necessary role and obtain temporary credentials
+        sts_client = boto3.client('sts')
+        assumed_role_object = sts_client.assume_role(RoleArn='arn:aws:iam::054037131148:role/Engineer', RoleSessionName='mysession')
+        credentials = assumed_role_object['Credentials']
+
+        # SSM client to retrieve the Load Balancer DNS from the Parameter Store
+        ssm = boto3.client('ssm', 
+                           aws_access_key_id=credentials['AccessKeyId'], 
+                           aws_secret_access_key=credentials['SecretAccessKey'], 
+                           aws_session_token=credentials['SessionToken'], 
+                           region_name='us-east-1')
+        
+        lb_dns_param = ssm.get_parameter(Name='/clixx/LoadbalancerDNS')
+        load_balancer_dns = lb_dns_param['Parameter']['Value']
+        print(f'Retrieved Load Balancer DNS from SSM: {load_balancer_dns}')
+
+        # Route 53 client to manage DNS records
+        route53_client = boto3.client('route53', 
+                                      aws_access_key_id=credentials['AccessKeyId'], 
+                                      aws_secret_access_key=credentials['SecretAccessKey'], 
+                                      aws_session_token=credentials['SessionToken'], 
+                                      region_name='us-east-1')
+
+        # Configuration for Route 53 record
+        hosted_zone_id = "Z0551560NBW39GLBWP0Q"
+        record_name = "boto.clixx-brie.com"
+
+        # Check if the record already exists
+        route53_response = route53_client.list_resource_record_sets(HostedZoneId=hosted_zone_id)
+        record_exists = any(record['Name'] == f"{record_name}." for record in route53_response['ResourceRecordSets'])
+
+        if not record_exists:
+            # Create a Route 53 record for the Load Balancer
+            route53_client.change_resource_record_sets(
+                HostedZoneId=hosted_zone_id,
+                ChangeBatch={
+                    'Comment': 'Create a record for the CLiXX Load Balancer',
+                    'Changes': [{
+                        'Action': 'CREATE',
+                        'ResourceRecordSet': {
+                            'Name': record_name,
+                            'Type': 'A',
+                            'AliasTarget': {
+                                'HostedZoneId': 'Z35SXDOTRQ7X7K',  # Replace with Load Balancer's CanonicalHostedZoneId
+                                'DNSName': load_balancer_dns,
+                                'EvaluateTargetHealth': False
+                            }
+                        }
+                    }]
+                }
+            )
+            print(f"Route 53 record created for {record_name}")
+ # Save the record name to SSM Parameter Store
+            ssm.put_parameter(
+                Name='/clixx/record_name',
+                Value=record_name,
+                Type='String',
+                Overwrite=True
+            )
+            print(f"Record name {record_name} saved to SSM Parameter Store.")
+
+        else:
+            print(f"Route 53 record already exists for {record_name}")
+
+    except ClientError as e:
+        print(f"Error occurred: {e}")
+        return record_name
+    
     
 if __name__=="__main__":
     sts_client=boto3.client('sts')
@@ -719,4 +789,4 @@ if __name__=="__main__":
     load_balancer_arn, load_balancer_dns= create_load_balancer(security_group_id,tg_arn, public_subnets)
     rds_identifier, rds_endpoint_address = create_rds_instance(private_subnets, security_group_id)
     asg_arn = create_autoscaling_group(security_group_id, tg_arn, public_subnets)
-    
+    record_name = create_route53_record()
