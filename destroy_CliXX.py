@@ -178,15 +178,15 @@ def delete_subnet(subnet_id):
         # Delete public subnets
         for subnet_id in public_subnet_ids:
             ec2.delete_subnet(SubnetId=subnet_id)
-            print('Deleted Public Subnet: %s' % (subnet_id))
+            print(f'Deleted Public Subnet: {subnet_id}')
 
         # Delete private subnets
         for subnet_id in private_subnet_ids:
             ec2.delete_subnet(SubnetId=subnet_id)
-            print('Deleted Private Subnet: %s' (subnet_id))
+            print(f'Deleted Private Subnet: {subnet_id}')
     
     except ClientError as e:
-        print("Error: %s" % (e))
+        print(f"Error: {e}")
         
 def delete_security_group(security_group_id):
     sts_client=boto3.client('sts')
@@ -321,7 +321,60 @@ def delete_db_instance(rds_identifier,db_subnet_group_name):
         
     except ClientError as e:
         print("Error:", e)
-                
+        
+def delete_launch_template(lt_id):
+    sts_client=boto3.client('sts')
+    #Calling the assume_role function
+    assumed_role_object=sts_client.assume_role(RoleArn='arn:aws:iam::054037131148:role/Engineer', RoleSessionName='mysession')
+    credentials=assumed_role_object['Credentials']
+    print(credentials)
+    ssm_client = boto3.client('ssm',aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'],region_name='us-east-1')
+    ec2 = boto3.client('ec2', aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'], region_name='us-east-1')
+    try:
+        # Retrieve the Launch Template name from SSM Parameter Store
+        parameter_name = '/clixx/LaunchTemplateID'
+        response = ssm_client.get_parameter(Name=parameter_name)
+        lt_id = response['Parameter']['Value']
+        print(f"Retrieved Launch Template Name Name from SSM: {lt_id}")
+
+        # Delete the launch template
+        ec2.delete_launch_template(
+                LaunchTemplateId=lt_id
+        )
+        print(f"Launch Template '{lt_id}' deleted successfully.")
+        return True
+
+    except ClientError as error:
+        print(f"An error occurred: {error}")
+        return False
+
+def delete_auto_scaling_group(asg_name):
+    try:
+        # Initialize the STS client
+        sts_client = boto3.client('sts')
+        # Assume the specified IAM role
+        assumed_role_object = sts_client.assume_role(RoleArn='arn:aws:iam::054037131148:role/Engineer',RoleSessionName='mysession')
+        credentials = assumed_role_object['Credentials']
+        # Initialize the SSM and Auto Scaling clients with assumed role credentials
+        ssm_client = boto3.client('ssm',aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'],region_name='us-east-1')
+        autoscaling_client = boto3.client('autoscaling',aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'],region_name='us-east-1')
+        
+        # Retrieve the Auto Scaling group name from SSM Parameter Store
+        parameter_name = '/clixx/AutoScalingGroups'
+        response = ssm_client.get_parameter(Name=parameter_name)
+        asg_name = response['Parameter']['Value']
+        print(f"Retrieved Auto Scaling Group Name from SSM: {asg_name}")
+        
+        # Delete the Auto Scaling group and its instances
+        autoscaling_client.delete_auto_scaling_group(
+            AutoScalingGroupName=asg_name,
+            ForceDelete=True  # Ensures all instances are terminated
+        )
+        print(f"Deleted Auto Scaling Group: {asg_name}")
+    
+    except ClientError as e:
+        print(f"An error occurred: {e}")
+                        
 def delete_vpc(vpc_id):
     sts_client=boto3.client('sts')
     #Calling the assume_role function
@@ -359,7 +412,7 @@ def cleanup_resources(
     vpc_id, public_subnet_ids, private_subnet_ids, security_group_id, 
     mount_target_id, file_system_id, internet_gateway_id, nat_gateway_id, 
     eip_id, pub_route_table_ids, priv_route_table_ids, tg_arn, 
-    load_balancer_arn, rds_identifier, db_subnet_group_name
+    load_balancer_arn, rds_identifier, db_subnet_group_name, asg_name, lt_id
 ):
     # Delete NAT Gateway and associated resources
     delete_efs_and_mounts(mount_target_id, file_system_id)
@@ -367,7 +420,8 @@ def cleanup_resources(
     delete_load_balancer(load_balancer_arn)
     delete_db_instance(rds_identifier, db_subnet_group_name)
     release_address(eip_id)
-
+    delete_launch_template(lt_id)
+    delete_auto_scaling_group(asg_name)
     # Unmap public IPs and delete subnets
     for public_subnet_id in public_subnet_ids:
         unmap_public_ip(public_subnet_id)
@@ -411,6 +465,8 @@ if __name__=="__main__":
     load_balancer_arn = None
     rds_identifier = None
     db_subnet_group_name = None
+    asg_name = None
+    lt_id = None
 
     # Print resource IDs and proceed with deletion
     print("Deleting resources with the following IDs:")
@@ -429,10 +485,12 @@ if __name__=="__main__":
     print("Load Balancer ARN:", load_balancer_arn)
     print("RDS Identifier:", rds_identifier)
     print("DB Subnet Group Name:", db_subnet_group_name)
+    print("Autoscaling Group Name:", asg_name)
+    print("Launch Template Name:", lt_id)
     
     cleanup_resources(
         vpc_id, public_subnet_ids, private_subnet_ids, security_group_id,
         mount_target_id, file_system_id, internet_gateway_id, nat_gateway_id,
         eip_id, pub_route_table_ids, priv_route_table_ids, tg_arn,
-        load_balancer_arn, rds_identifier, db_subnet_group_name
+        load_balancer_arn, rds_identifier, db_subnet_group_name, asg_name, lt_id
     )

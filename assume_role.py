@@ -670,7 +670,17 @@ sudo /sbin/sysctl -w net.ipv4.tcp_keepalive_time=200 net.ipv4.tcp_keepalive_intv
             'UserData': user_data_base64code
                 }
             )
-
+    response = ec2_client.describe_launch_templates(
+        LaunchTemplateNames=['stack-clixx-launch-template']
+    )
+    if response['LaunchTemplates']:
+        lt_id = response['LaunchTemplates'][0]['LaunchTemplateId']
+        print("Launch Template ID:", lt_id)
+        save_to_ssm('/clixx/LaunchTemplateID', lt_id)
+        return lt_id
+    else:
+        print("Launch Template Name not found.")
+     
     autoscaling.create_auto_scaling_group(
         AutoScalingGroupName='stack-clixx-boto-asg',
         LaunchTemplate={
@@ -692,10 +702,10 @@ sudo /sbin/sysctl -w net.ipv4.tcp_keepalive_time=200 net.ipv4.tcp_keepalive_intv
     )
     
     if response['AutoScalingGroups']:
-        asg_arn = response['AutoScalingGroups'][0]['AutoScalingGroupARN']
-        print("AutoScaling Group ARN:", asg_arn)
-        save_to_ssm('/clixx/AutoScalingGroups', asg_arn)
-        return asg_arn
+        asg_name = response['AutoScalingGroups'][0]['AutoScalingGroupName']
+        print("AutoScaling Group ARN:", asg_name)
+        save_to_ssm('/clixx/AutoScalingGroups', asg_name)
+        return asg_name
     else:
         print("AutoScaling Group not found.")
         return None
@@ -788,5 +798,5 @@ if __name__=="__main__":
     tg_arn = create_target_group(vpc_id)
     load_balancer_arn, load_balancer_dns= create_load_balancer(security_group_id,tg_arn, public_subnets)
     rds_identifier, rds_endpoint_address = create_rds_instance(private_subnets, security_group_id)
-    asg_arn = create_autoscaling_group(security_group_id, tg_arn, public_subnets)
+    asg_name = create_autoscaling_group(security_group_id, tg_arn, public_subnets)
     record_name = create_route53_record()
