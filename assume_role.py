@@ -663,24 +663,26 @@ sudo /sbin/sysctl -w net.ipv4.tcp_keepalive_time=200 net.ipv4.tcp_keepalive_intv
     # Get availability zones
     ec2_client=boto3.client('ec2',aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'],region_name='us-east-1')
     availability_zones = [az['ZoneName'] for az in ec2_client.describe_availability_zones()['AvailabilityZones']]
-    print(availability_zones)
-    launch_template_response = ec2_client.create_launch_template(
-        LaunchTemplateName='stack-clixx-launch-template',
-        LaunchTemplateData={
-            'ImageId': 'ami-0ddc798b3f1a5117e',
-            'InstanceType': 't3.micro',
-            'SecurityGroupIds': [security_group_id],
-            'KeyName': 'clixx_boto',
-            'UserData': user_data_base64code
-                }
-            )
-    lt_id = launch_template_response['LaunchTemplate'][0]['LaunchTemplateId']
-    # Save Launch Template Name to SSM Parameter Store
+    print("Available Availability Zones:", availability_zones)
     try:
+        launch_template_response = ec2_client.create_launch_template(
+            LaunchTemplateName='stack-clixx-launch-template',
+            LaunchTemplateData={
+                'ImageId': 'ami-0ddc798b3f1a5117e',
+                'InstanceType': 't3.micro',
+                'SecurityGroupIds': [security_group_id],
+                'KeyName': 'clixx_boto',
+                'UserData': user_data_base64code
+            }
+        )
+        lt_id = launch_template_response['LaunchTemplate']['LaunchTemplateId']
+        print("Launch Template ID:", lt_id)
+        # Save Launch Template Name to SSM Parameter Store
+    
         ssm.put_parameter(Name='/clixx/LaunchTemplateID',Value=lt_id,Type='String',Overwrite=True)
         print("Launch Template Name saved to SSM Parameter Store.")
     except ClientError as e:
-        print("Error saving DB Subnet Group Name to SSM: %s" % e)
+        print(f"An error occurred: {e}")
         
     autoscaling=boto3.client('autoscaling',aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'],region_name='us-east-1') 
     autoscaling.create_auto_scaling_group(
