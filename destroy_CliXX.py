@@ -383,36 +383,72 @@ def delete_route53_record(hosted_zone_id, record_name):
     print(credentials)
     # Initialize the Route 53 client
     route53_client = boto3.client('route53',aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'],region_name='us-east-1')
+# Initialize the SSM client with assumed role credentials
+    ssm = boto3.client(
+        'ssm',
+        aws_access_key_id=credentials['AccessKeyId'],
+        aws_secret_access_key=credentials['SecretAccessKey'],
+        aws_session_token=credentials['SessionToken'],
+        region_name='us-east-1'
+    )
+
+    # Retrieve Hosted Zone ID from SSM Parameter Store
+    try:
+        hosted_zone_id_param = ssm.get_parameter(Name='/clixx/hostedzoneid')
+        hosted_zone_id = hosted_zone_id_param['Parameter']['Value']
+        print(f'Retrieved Hosted Zone ID from SSM: {hosted_zone_id}')
+    except ClientError as e:
+        print(f"Error retrieving Hosted Zone ID: {e}")
+        return
+
+    # Retrieve Record Name from SSM Parameter Store
+    try:
+        record_name_param = ssm.get_parameter(Name='/clixx/record_name')
+        record_name = record_name_param['Parameter']['Value']
+        print(f'Retrieved Record Name from SSM: {record_name}')
+    except ClientError as e:
+        print(f"Error retrieving Record Name: {e}")
+        return
+
+    # Initialize the Route 53 client with assumed role credentials
+    route53_client = boto3.client('route53',aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'],region_name='us-east-1')
+
+    # Retrieve the existing record set to get its details
+    try:
+        response = route53_client.list_resource_record_sets(
+            HostedZoneId=hosted_zone_id,
+            StartRecordName=record_name,
+            StartRecordType='A',
+            MaxItems='1'
+        )
+        record_sets = response.get('ResourceRecordSets', [])
+        if not record_sets or record_sets[0]['Name'] != record_name:
+            print(f"No matching record found for {record_name}")
+            return
+        record_set = record_sets[0]
+    except ClientError as e:
+        print(f"Error retrieving record set: {e}")
+        return
+
     # Define the change batch request to delete the specified record
     change_batch = {
         'Changes': [
             {
                 'Action': 'DELETE',
-                'ResourceRecordSet': {
-                    'Name': record_name,
-                    'Type': 'A',
-                    # Specify the TTL and ResourceRecords as they exist
-                    'TTL': 300,  # Replace with the actual TTL of the record
-                    'ResourceRecords': [
-                        {'Value': '192.0.2.1'},  # Replace with the actual value(s) of the record
-                    ],
-                }
+                'ResourceRecordSet': record_set
             },
         ]
     }
-    ssm = boto3.client('ssm', aws_access_key_id=credentials['AccessKeyId'],aws_secret_access_key=credentials['SecretAccessKey'],aws_session_token=credentials['SessionToken'], region_name='us-east-1')
+
+    # Submit the change batch request
     try:
-        # Retrieve VPC ID from SSM Parameter Store
-        hosted_zone_id_param = ssm.get_parameter(Name='/clixx/hostedzoneid')
-        hosted_zone_id = hosted_zone_id_param['Parameter']['Value']
-        print('Retrieved Hosted Zone ID from SSM: %s' % (hosted_zone_id))
-        # Submit the change batch request
-        route53_client.change_resource_record_sets(
-        HostedZoneId=hosted_zone_id,
-        ChangeBatch=change_batch
+        response = route53_client.change_resource_record_sets(
+            HostedZoneId=hosted_zone_id,
+            ChangeBatch=change_batch
         )
+        print(f"Change submitted: {response['ChangeInfo']['Id']}")
     except ClientError as e:
-        print("Error: %s" % (e))
+        print(f"Error deleting record: {e}")
                         
 def delete_vpc(vpc_id):
     sts_client=boto3.client('sts')
